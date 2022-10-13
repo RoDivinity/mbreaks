@@ -16,5 +16,5 @@ RoxygenNote: 7.1.1
 Depends: R (>= 3.3)
 Imports: ggplot2
 Roxygen: list(markdown = TRUE)
-Suggests: knitr, rmarkdown
+Suggests: knitr, rmarkdown, graphics
 VignetteBuilder: knitr
