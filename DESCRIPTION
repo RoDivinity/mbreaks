@@ -1,14 +1,20 @@
 Package: mbreaks
 Type: Package
-Title: Structural break estimation and testing procedure
-Version: 1.0.1
-Author: Linh Nguyen, Yohei Yamamoto
-Maintainer: Linh Nguyen <nguye535@purdue.edu>
-Description: The library contains dynamic programming approach to conduct estimation, inference and testing for linear models in presence of structural breaks.
-License: GPL (>= 3)
+Title: Estimation and inference for structural breaks in linear regression models
+Version: 1.0.0
+Authors@R: 
+	c(
+	person("Linh", "Nguyen", role = c("aut","cre"), email = "nguye535@purdue.edu"),
+	person("Yohei", "Yamamoto", role = "aut", email = "yohei.yamamoto@r.hit-u.ac.jp"))
+Description: The library contains efficient dynamic programming approach to conduct estimation, inference and testing for linear models in presence of structural breaks.
+URL: https://github.com/RoDivinity/mbreaks
+BugReports: https://github.com/RoDivinity/mbreaks/issues
+License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 7.1.1
-Depends: R (>= 2.10)
+Depends: R (>= 3.3)
 Imports: ggplot2
 Roxygen: list(markdown = TRUE)
+Suggests: knitr, rmarkdown
+VignetteBuilder: knitr
