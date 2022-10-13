@@ -1,6 +1,7 @@
+########  Confidence intervals for break dates and coefficients ########
 #procedure and sub-procedures to obtain corrected cov-variance estimators
 #based on assumptions on the error terms (e.g: heteroskedasticity/homoskedasticity,
-# serially correlated/serially uncorrelated, ...)
+#serially correlated/serially uncorrelated, ...)
 
 
 #' Long-run covariance matrix computation
@@ -10,7 +11,7 @@
 #'
 #' @param vmat variance matrix
 #' @return jhat Long run covariance matrix
-#' @export
+
 jhatpr = function(vmat) {
   nt = dim(vmat)[1]
   d = dim(vmat)[2]
@@ -105,7 +106,6 @@ correct = function (reg,res,prewhit){
 #'@param robust,withb,hetdat,hetvar options for assumptions of error terms
 #'structure
 #'@return vdel Covariance matrix of delta
-#'@export
 
 pvdel = function(y,z,i,q,bigT,b,prewhit,robust,x,p,withb,hetdat,hetvar) {
 

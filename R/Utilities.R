@@ -144,7 +144,7 @@ OLS = function(y,x) {
 #'@param y matrix of dependent variables
 #'@param zz matrix of independent variables
 #'@return ssr: Sum of Squared Residuals
-#'@enoRd
+#'@noRd
 nssr = function(y,zz) {
   delta = OLS(y,zz)
   resid = y - zz %*% delta
@@ -260,7 +260,6 @@ kern = function(x) {
 #'@param bigT The sample size T
 #'@return lambda (m+1) by (m+1) diagonal matrix
 #'with i-th entry \eqn{\frac{T_{i} - T_{i-1}}{ T}}
-#'@export
 #
 
 plambda = function(b,m,bigT) {
@@ -289,7 +288,6 @@ plambda = function(b,m,bigT) {
 #'@param nt The sample size
 #'@return sigmat (i+1)x(i+1) diagonal matrix with i-th entry
 #'equal to estimated variance of regime i
-#'@export
 #'
 psigmq = function (res,b,q,m,nt) {
 
@@ -317,7 +315,7 @@ psigmq = function (res,b,q,m,nt) {
 #'Calculate p-value
 #'
 #'Function computes the p-value of the test
-#'
+#'@importFrom stats pnorm
 #'@param x
 #'@param bet
 #'@param alph
@@ -325,14 +323,13 @@ psigmq = function (res,b,q,m,nt) {
 #'@param deld
 #'@param gam
 #'@return g The p-value
-#'@export
 funcg = function (x,bet,alph,b,deld,gam){
   #g = pval
 
   if(x <= 0){
     xb = bet * sqrt(abs(x))
     if (abs(xb) <= 30){
-      g = -sqrt(-x/(2*pi)) * exp(x/8) - (bet/alph)*exp(-alph*x)*pnorm(-bet*sqrt(abs(x)))+
+      g = -sqrt(-x/(2*pi)) * exp(x/8) - (bet/alph)*exp(-alph*x)*stats::pnorm(-bet*sqrt(abs(x)))+
         ((2*bet*bet/alph)-2-x/2)*pnorm(-sqrt(abs(x))/2)
     }
     else{
@@ -368,7 +365,7 @@ funcg = function (x,bet,alph,b,deld,gam){
 #'@param phi1s
 #'@param phi2s
 #'@return cvec Critical values of break dates
-#'@export
+
 cvg = function(eta,phi1s,phi2s){
   cvec = matrix(0L,nrow = 4, ncol = 1)
   a=phi1s/phi2s
@@ -424,7 +421,6 @@ cvg = function(eta,phi1s,phi2s){
 #'@param signif significant level
 #'@param eps1 trimming level
 #'@return cv Critical value of SupF test
-#'@export
 getcv1 = function(signif,eps1){
   if(eps1 == .05){
     out = supFcv1
@@ -470,7 +466,6 @@ getcv1 = function(signif,eps1){
 #'@param signif significant level
 #'@param eps1 trimming level
 #'@return cv Critical value of SupF(l+1|l) test
-#'@export
 getcv2 = function(signif,eps1){
   if(eps1 == .05){
     out = supF_next_cv1
@@ -556,26 +551,40 @@ getdmax = function(signif,eps1){
 #' @param z_name
 #' @param x_name
 #' @noRd
-process_data = function(y_name,z_name = NULL,x_name = NULL,data){
+process_data = function(y_name,z_name = NULL,x_name = NULL,data,const){
   #handle data
   y_ind = match(y_name,colnames(data))
   x_ind = match(x_name,colnames(data))
   z_ind = match(z_name,colnames(data))
   
   if(is.na(y_ind)){
+    cat('No matching dependent variable y. Please try again')
     return(NULL)}
   else{
   y = data[,y_ind]
   y = data.matrix(y)
+  T = dim(y)[1]
+  
   
   if (is.null(x_name)) {x = c()}
   else{
-    if(anyNA(x_ind)){print('No x regressors found. Please try again')}
+    if(anyNA(x_ind)){cat('No x regressors found. Please try again') 
+      return(NULL)}
     else{x = data.matrix(data[,x_ind,drop=FALSE])}}
-  if (is.null(z_name)) {z = matrix(1L,T,1)}
+  if (is.null(z_name)) {
+    if (const == 1) {z = matrix(1L,T,1)}
+    else {cat('No regressors in the model. Please specify at least 1 regressors')
+      return(NULL)}}
   else{
-    if(anyNA(z_ind)){print('No z regressors found. Please try again')}
-    else{z = data.matrix(data[,z_ind,drop=FALSE])}}
+    if(anyNA(z_ind)){print('No z regressors found. Please try again')
+      return(NULL)}
+    else{
+      if (const == 1){
+        z = data.matrix(data[,z_ind,drop=FALSE])
+        z = cbind(matrix(1L,T,1),z)}
+      else{
+        z = data.matrix(data[,z_ind,drop=FALSE])
+      }}}
   out = list();
   #store y,x,z name and corresponding x,y and z data 
   out$y_name = y_name

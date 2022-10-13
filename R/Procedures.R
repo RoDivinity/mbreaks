@@ -2,9 +2,10 @@
 
 #' Global SSR minimizers procedure
 #'
-#' Function obtains global minimizers using the recursive algorithm to compute
-#' and minimize SSR over all possible segments. The procedure is required to
-#' conduct supF, UDMax, WDMax and supF(l+1|l) test
+#' A helper function to identify if the estimated break model is i) pure change or ii)
+#' partial change model. The procedure then calls appropriate functions \link{} to estimate 
+#' the pure change model and \link{} to estimate the partial change model. This helper function
+#' is required for supF, UDMax, WDMax and supF(l+1|l) test functions invoked via \link{}
 #'
 #'@aliases doglob
 #'@param y_name dependent variables in matrix form
@@ -22,7 +23,7 @@
 #'\itemize{
 #'\item{glb} {Minimum global SSR}
 #'\item{datevec} {Vector of dates (optimal minimizers)}
-#'\item{bigvec} {Associated SSRs}}
+#'\item{bigvec} {Associated SSRs with possible break dates combination}}
 #'@export
 #'
 doglob = function (y,z,x,m,eps,eps1,maxi,fixb,betaini,printd){
@@ -104,13 +105,13 @@ for (i in 1:m){
 #'\item{UDMax: table summarizing the Double Max test (including UDMax statistics and CVs)}
 #'}
 #'@export
-#'
-#'
+
+
 dotest = function(y_name,z_name=NULL,x_name=NULL,data,
                   m=5,eps=0.00001,eps1=0.15,maxi=10,fixb=0,betaini=0,printd=0,prewhit=1,robust=1,
-                  hetdat=1,hetvar=1){
+                  hetdat=1,hetvar=1,const=1){
   siglev=matrix(c(10,5,2.5,1),4,1)
-  df = process_data(y_name = y_name,z_name = z_name,x_name = x_name,data=data)
+  df = process_data(y_name = y_name,z_name = z_name,x_name = x_name,data=data,const)
   y = df$y
   z = df$z
   x = df$x
@@ -201,10 +202,9 @@ dotest = function(y_name,z_name=NULL,x_name=NULL,data,
   out$mbreak = m
   class(out) = 'sbtests'
   
-  out = compile.sbtests(out)
+  out = compile_sbtests(out)
   return(out)}
 }
-
 
 
 #' SupF(l+1|l) test
@@ -236,15 +236,15 @@ dotest = function(y_name,z_name=NULL,x_name=NULL,data,
 #'\item{supfl: SupF(l+1|l) test statistics}
 #'\item{cv: Critical values for SupF(l+1|l) test}
 #'\item{ndat: New date (if available)} }
-#'
 #'@export
+
 doseqtests = function(y_name,z_name=NULL,x_name=NULL,data,
                     m=5,eps=0.00001,eps1=0.15,maxi=10,fixb=0,betaini=0,printd=0,
                     prewhit=1,
-                    robust=1,hetdat=1,hetvar=1) {
+                    robust=1,hetdat=1,hetvar=1,const=1) {
   
   siglev=matrix(c(10,5,2.5,1),4,1)
-  df = process_data(y_name = y_name,z_name = z_name,x_name = x_name,data=data)
+  df = process_data(y_name = y_name,z_name = z_name,x_name = x_name,data=data,const)
   y = df$y
   z = df$z
   x = df$x
@@ -274,7 +274,7 @@ doseqtests = function(y_name,z_name=NULL,x_name=NULL,data,
     out=list()
     out$mbreak = m
     class(out) = 'seqtests'
-    out = compile.seqtests(out)
+    out = compile_seqtests(out)
     return(out)
   }
   else{
@@ -303,7 +303,7 @@ doseqtests = function(y_name,z_name=NULL,x_name=NULL,data,
   out = list('supfl' = supfl, 'ndat' = ndat, 'cv' = cv_supFl)
   out$mbreak = m
   class(out) = 'seqtests'
-  out = compile.seqtests(out)
+  out = compile_seqtests(out)
   return(out)
   }
   
@@ -332,14 +332,12 @@ doseqtests = function(y_name,z_name=NULL,x_name=NULL,data,
 #'\item{mLWZ}{number of breaks selected by LWZ}
 #'@export
 #'@references
-#
-
 
 doorder = function(y_name,z_name = NULL,x_name = NULL,data,
                    m=5,eps=0.00001,eps1=0.15,maxi=10,fixb=0,
-                   betaini=0,printd=0,bic_opt=1) {
+                   betaini=0,printd=0,bic_opt=1,const=1) {
 
-  df = process_data(y_name = y_name,z_name = z_name,x_name = x_name,data=data)
+  df = process_data(y_name = y_name,z_name = z_name,x_name = x_name,data=data,const)
   y = df$y
   z = df$z
   x = df$x
@@ -420,125 +418,21 @@ doorder = function(y_name,z_name = NULL,x_name = NULL,data,
     class(out) = 'model'
     out$numz = q
     out$numx = p
+    out$const = const
     out$y_name = y_name
     out$z_name = z_name
     out$x_name = x_name
     out$y = y
     out$x = x
     out$z = z
-    out = compile.model(out)
+    out = compile_model(out)
     return(out)
   }
   
 }
 
 
-#sequential procedure
-sequa = function(m,signif,q,h,bigT,robust,prewhit,z,y,x,p,hetdat,hetvar,eps1){
 
-  dv = matrix(0L, nrow = m+2, ncol = 1)
-  dv2 = matrix(0L, nrow = m+2, ncol = 1)
-  ftestv = matrix(0L, nrow = m+1,ncol = 1)
-
-  cv = getcv2(signif,eps1)
-  dv[1,1] = 0
-
-  if (p == 0){
-    y_rev = rot90(rot90(y))
-    z_rev = rot90(rot90(z))
-    vssrev = ssr(1,y_rev,z_rev,h,bigT)
-    vssr = ssr(1,y,z,h,bigT)
-    out = partione(h,bigT-h,bigT,vssr,vssrev)
-    datx = out$dx
-    ssrmin = out$ssrmin
-  }
-  else{
-    out = onebp(y,z,x,h,1,bigT)
-    datx = out$bd
-    ssrmin = out$ssrind
-  }
-
-  dv[2,1] = datx
-
-  ftest=pftest(y,z,1,q,bigT,dv[2,1,drop=FALSE],prewhit,robust,x,p,hetdat,hetvar)
-
-  if (ftest < cv[q,1]) {
-    nbreak = 0
-    dv[2,1] = 0
-    #dv0 = dv[seq(2,nbreak+1,1),1]
-    nseg = 1
-  }
-  else{
-    #print(paste('First break found at:',datx))
-    nbreak = 1
-    nseg = 2
-    dv[nseg+1,1] = bigT
-  }
-
-  while(nseg <= m){
-    ds = matrix(0L,nseg+1,1)
-    ftestv = matrix(0L,nseg+1,1)
-
-    i_s = 1
-
-    while(i_s <= nseg){
-      length = dv[i_s+1,1] - dv[i_s,1]
-
-      if(length >= 2*h){
-        if(p==0){
-          y_temp = y[seq(dv[i_s,1]+1,dv[i_s+1,1]),1,drop=FALSE]
-          z_temp = z[seq(dv[i_s,1]+1,dv[i_s+1,1]),,drop=FALSE]
-          vssr = ssr(1,y_temp,z_temp,h,length)
-          y_temp_rev = rot90(rot90(y_temp))
-          z_temp_rev = rot90(rot90(z_temp))
-          vssrev = ssr(1,y_temp_rev,z_temp_rev,h,length)
-          out = partione(h,length-h,length,vssr,vssrev)
-          ds[i_s,1] = out$dx
-          ftestv[i_s,1] = pftest(y_temp,z_temp,1,q,length,ds[i_s,1,drop=FALSE],prewhit,
-                                 robust,0,p,hetdat,hetvar)
-        }
-        else{
-          y_temp = y[seq(dv[i_s,1]+1,dv[i_s+1,1]),1,drop=FALSE]
-          z_temp = z[seq(dv[i_s,1]+1,dv[i_s+1,1]),,drop=FALSE]
-          x_temp = x[seq(dv[i_s,1]+1,dv[i_s+1,1]),,drop=FALSE]
-          out = onebp(y,z,x,h,dv[i_s,1]+1,dv[i_s+1,1])
-          ds[i_s,1] = out$bd - dv[i_s,1]
-          ftestv[i_s,1] = pftest(y_temp,z_temp,1,q,length,ds[i_s,1],
-                                 prewhit,robust,x_temp,p,hetdat,hetvar)
-        }
-      }
-      else{
-        ftestv[i_s,1] = 0.0
-      }
-      i_s = i_s + 1
-    }
-
-    maxf = max(ftestv[seq(1,nseg,1),1])
-
-    if (maxf < cv[q,nseg]){
-      #print(nbreak)
-      #dv0 = dv[seq(2,nbreak+1,1),1]
-    }
-    else {
-      newseg = which.max(ftestv[seq(1,nseg),1])
-      dv[nseg+2,1] = ds[newseg,1] + dv[newseg,1]
-      nbreak = nbreak + 1
-      #check this sort
-      dv2 = sort(dv[seq(2,nseg+2,1),1])
-      dv2 = matrix(dv2, ncol = 1)
-      dv[1,1] = 0
-      dv[seq(2,nseg+2,1),1] = dv2
-
-    }
-    nseg = nseg + 1
-  }
-
-  #print('The sequential procedure has reached the upper limit')
-  if (nbreak < 1) {dv0 = c()}
-  else{
-    dv0 = dv[seq(2,nbreak+1,1),1]}
-  out = list('nbreak' = nbreak, 'dv0' = dv0)
-}
 
 #' Sequential procedure
 #'
@@ -568,14 +462,14 @@ sequa = function(m,signif,q,h,bigT,robust,prewhit,z,y,x,p,hetdat,hetvar,eps1){
 
 dosequa = function(y_name,z_name=NULL,x_name=NULL,data,
                    m=5,eps=0.00001,eps1=0.15,maxi=10,fixb=0,betaini=0,printd=0,
-                   prewhit=1,robust=1,hetdat=1,hetvar=1) {
+                   prewhit=1,robust=1,hetdat=1,hetvar=1,const=1) {
   if (m<=0){
     cat('\nThe maximum number of breaks cannot be negative, set m = 5\n')
     m = 5;
   }
   
   
-  df = process_data(y_name = y_name,z_name = z_name,x_name = x_name,data=data)
+  df = process_data(y_name = y_name,z_name = z_name,x_name = x_name,data=data,const)
   y = df$y
   z = df$z
   x = df$x
@@ -644,56 +538,21 @@ dosequa = function(y_name,z_name=NULL,x_name=NULL,data,
     class(out) = 'model'
     out$numz = q
     out$numx = p
+    out$const = const
     out$y_name = y_name
     out$z_name = z_name
     out$x_name = x_name
     out$y = y
     out$x = x
     out$z = z
-    out = compile.model(out)
+    out = compile_model(out)
     return(out)
   }
   
   
 }
 
-#preparti
-preparti = function(y,z,nbreak,dateseq,h,x,p) {
-  bigT = dim(z)[1]
-  q = dim(z)[2]
 
-  #care if nbreak is matrix or scalar
-  dv = matrix(0L, nrow = nbreak+2, ncol = 1)
-  dv[1,1] = 0
-  dv[seq(2,nbreak+1,1),1] = dateseq
-
-  dv[nbreak+2,1] = bigT
-  ds = matrix(0L,nrow = nbreak, ncol = 1)
-  dr = matrix(0L,nrow = nbreak, ncol = 1)
-
-  for (is in 1:nbreak){
-    length = dv[is+2,1] - dv[is,1]
-    if (p == 0){
-      index = seq(dv[is,1]+1,dv[is+2,1],1)
-      y_temp = y[index,1,drop=FALSE]
-      z_temp = z[index,,drop=FALSE]
-      vssr = ssr(1,y_temp,z_temp,h,length)
-      y_temp_rev = rot90(rot90(y_temp))
-      z_temp_rev = rot90(rot90(z_temp))
-      vssrev = ssr(1,y_temp_rev,z_temp_rev,h,length)
-      out = partione(h,length-h,length,vssr,vssrev)
-      ds[is,1] = out$dx
-      dr[is,1] = ds[is,1] + dv[is,1]
-    }
-    else{
-      out = onebp(y,z,x,h,dv[is,1]+1,dv[is+2,1])
-      ds[is,1] = out$bd
-      dr[is,1] = ds[is,1]
-    }
-
-  }
-  return(dr)
-}
 
 #'Repartition procedure
 #'
@@ -722,16 +581,16 @@ preparti = function(y,z,nbreak,dateseq,h,x,p) {
 #'@return reparv Repartition method estimation of break dates
 #'
 #'@export
-dorepart = function(y_name,z_name,x_name,data,
+dorepart = function(y_name,z_name = NULL,x_name = NULL,data,
                     m=5,eps=0.00001,eps1=0.15,maxi=10,fixb=0,betaini=0,printd=0,
-                    prewhit=1,robust=1,hetdat=1,hetvar=1){
+                    prewhit=1,robust=1,hetdat=1,hetvar=1,const=1){
   
   if(m<0){
     cat('\nThe maximum number of breaks cannot be negative, set m = 5\n')
     m = 5
   }
   
-  df = process_data(y_name = y_name,z_name = z_name,x_name = x_name,data=data)
+  df = process_data(y_name = y_name,z_name = z_name,x_name = x_name,data=data,const)
   y = df$y
   z = df$z
   x = df$x
@@ -799,13 +658,14 @@ dorepart = function(y_name,z_name,x_name,data,
     class(out) = 'model'
     out$numz = q
     out$numx = p
+    out$const = const
     out$y_name = y_name
     out$z_name = z_name
     out$x_name = x_name
     out$y = y
     out$x = x
     out$z = z
-    out = compile.model(out)
+    out = compile_model(out)
     return(out)
   }
   
@@ -842,16 +702,16 @@ dorepart = function(y_name,z_name,x_name,data,
 #'@export
 #'
 #Estimate a model with pre-specified number of breaks 
-dofix = function(y_name,z_name,x_name,data,
+dofix = function(y_name,z_name = NULL,x_name=NULL,data,
                     fixn=5,eps=0.00001,eps1=0.15,maxi=10,fixb=0,betaini=0,printd=0,
-                    prewhit=1,robust=1,hetdat=1,hetvar=1){
+                    prewhit=1,robust=1,hetdat=1,hetvar=1,const=1){
   
   if(fixn<0){
     cat('\nThe maximum number of breaks cannot be negative, set prespecified breaks = 2\n')
     fixn = 2
   }
   
-  df = process_data(y_name = y_name,z_name = z_name,x_name = x_name,data=data)
+  df = process_data(y_name = y_name,z_name = z_name,x_name = x_name,data=data,const)
   y = df$y
   z = df$z
   x = df$x
@@ -891,26 +751,22 @@ out$nbreak = fixn
 class(out) = 'model'
 out$numz = q
 out$numx = p
+out$const = const
 out$y_name =y_name
 out$x_name =x_name
 out$z_name =z_name
 out$y = y
 out$z = z
 out$x = x
-out = compile.model(out)
+out = compile_model(out)
 return(out)}
 }
 
 
-
-
-
-
-
 #Format output of n break model
 #'
-#'@noRD
-compile.model = function (x,digits = -1,...){
+#'@noRd
+compile_model = function (x,digits = -1,...){
   if (digits==-1){digits = 3}
   if (x$nbreak == 0){return(NULL)}
   else {
@@ -933,9 +789,16 @@ compile.model = function (x,digits = -1,...){
     
     #format full-sample coefficients
     rnameRS = c()
-      for (i in 1:x$numz){
+    if (x$const == 1){
+      rnameRS = 'Const'
+      for (i in 1:x$numz-1){
         rnameRS = cbind(rnameRS,x$z_name[i])
       }
+    }else{
+      for (i in 1:x$numz-1){
+        rnameRS = cbind(rnameRS,x$z_name[i])
+      }
+    }
     
     cnameRS = c()
     coefRS = c()
@@ -986,33 +849,20 @@ compile.model = function (x,digits = -1,...){
     return(x)
   }
   
-  
-
-
 
 
 #'Summary output of a n breaks model
 #'
 #'Function to format the output of the n-break model
-#'@param nbreak number of breaks in the model
-#'@param glb global minimum SSR of the model
-#'@param datevec estimated break date
-#'@param y dependent variables
-#'@param z independent variables with regime-specific coefficients
-#'@param x independent variables with regime-wise coefficients
-#'@return tbl Tables containings:
-#'i) global minimum SSR
-#'ii) estimated date
-#'iii) estimated coefficients
+#'@export
 
-print.model <- function(x,digits = -1,...)
+print.model <- function(x,...)
 {
   #print procedure used to select number of breaks
   proc = switch(x$p_name,'dosequa'='sequential procedure', 'BIC' = 'BIC', 'LWZ' = 'LWZ',
                 'dorepart' = 'repartition procedure', 'fix' = 'specified number of breaks')
-
+  digits = max(3L, getOption("digits") - 3L)
   
-  if (digits==-1){digits = 3}
   if (x$nbreak == 0){
     cat(paste('\nNo breaks were found using',proc),'\n')
   }else{
@@ -1045,20 +895,10 @@ print.model <- function(x,digits = -1,...)
 #'Summary output of Sup Wald test
 #'
 #'Function to format the output of the Sup F test
-#'@param nbreak number of breaks in the model
-#'@param glb global minimum SSR of the model
-#'@param datevec estimated break date
-#'@param y dependent variables
-#'@param z independent variables with regime-specific coefficients
-#'@param x independent variables with regime-wise coefficients
-#'@return tbl Tables containings:
-#'i) global minimum SSR
-#'ii) estimated date
-#'iii) estimated coefficients
-#'
+#'@export
 
 
-compile.sbtests <- function(x,digits = -1,...)
+compile_sbtests <- function(x,digits = -1,...)
 {
   if(x$mbreak == 0){
     return(x)
@@ -1095,22 +935,11 @@ compile.sbtests <- function(x,digits = -1,...)
   return(x)}
 }
 
-#'Summary output of Sup(l+1|l) test
-#'
-#'Function to format the output of the Sup F test
-#'@param nbreak number of breaks in the model
-#'@param glb global minimum SSR of the model
-#'@param datevec estimated break date
-#'@param y dependent variables
-#'@param z independent variables with regime-specific coefficients
-#'@param x independent variables with regime-wise coefficients
-#'@return tbl Tables containings:
-#'i) global minimum SSR
-#'ii) estimated date
-#'iii) estimated coefficients
-#'
 
+#'S3 print function for sup F tests
+#'#'Function to format the output of the Sup F test
 #'@export
+
 print.sbtests <- function(x,...)
 { if(x$mbreak == 0){
   cat('\nThe test is undefined for no break model\n')
@@ -1123,7 +952,7 @@ print.sbtests <- function(x,...)
 }
 
 
-compile.seqtests = function(x){
+compile_seqtests = function(x){
   if(x$mbreak==1){
     cat('\nThe test is exactly 0 versus 1 break, hence the sequential test is not repeated\n')
     x$sfl = NULL
@@ -1156,6 +985,7 @@ compile.seqtests = function(x){
   return (x)}
 }
 
+#'S3 function to print sequential tests
 #'@export
 print.seqtests = function(x,...){
   if(x$mbreak==1){
@@ -1170,62 +1000,6 @@ print.seqtests = function(x,...){
 }
 
 
-#' #' Plot model of estimated n breaks
-#' plot.model = function(x,...){
-#'   #get data from the model
-#'   m = x$nbreak
-#'   y = x$y
-#'   zreg = x$z
-#'   xreg = x$x
-#'   p = x$numx
-#'   q = x$numz
-#'   date = x$date
-#'   beta = x$beta
-#'   zbar = diag_par(zreg,m,date)
-#'   T = length(y)
-#'   if (p == 0){
-#'     reg = zbar
-#'   }
-#'   else{
-#'     reg = cbind(xreg,zbar)
-#'   }
-#'   
-#'   #compute model with no breaks
-#'   fixreg = cbind(xreg,zreg)
-#'   fixbeta = OLS(y,fixreg)
-#'   fity_fix = fixreg%*%fixbeta
-#'   
-#'   fity = reg%*%beta
-#'   tx = seq(1,T,1)
-#'   
-#'   range_y = max(y)-min(y);
-#'   
-#'   #plot original series
-#'   graphics::plot(tx,y,type='l',col="black", xlab='time',ylab="y", 
-#'        ylim=c(min(y)-range_y/10,max(y)+range_y/10),lty=1)
-#'   
-#'   #plot fitted values series
-#'   
-#'   graphics::lines(tx, fity,type='l', col="blue",lty=2)
-#'   
-#'   
-#'   #plot fitted values series
-#'   
-#'   graphics::lines(tx, fity_fix,type='l', col="dark red",lty=2)
-#'   
-#'   for (i in 1:m){
-#'     graphics::abline(v=date[i,1],lty=2)
-#'     if (x$CI[i,1] < 0 || x$CI[i,2]>T){}else{
-#'    graphics::segments(x$CI[i,1],min(y)*(12+i/m)/10,x$CI[i,2],min(y)*(12+i/m)/10,lty=1,col='red')}
-#'   }
-#'   
-#'   legend(0,max(y)+range_y/10,legend=c("observed y",paste(m,'break y'),"0 break y"),
-#'         lty=c(1,2,2), col=c("black","blue","red"), ncol=1)
-#'   
-#'   
-#' }
-#' 
-#' 
 
 #' new plot function for class model
 #' @importFrom ggplot2 ggplot aes annotate geom_segment geom_line ggtitle .data coord_cartesian scale_color_manual geom_ribbon
@@ -1235,7 +1009,7 @@ plot_model = function(model,CI=0.95,title=NULL){
   if(m==0){
     cat('The model has no break. Visualization for comparison between structural breaks 
         versus no breaks is skipped')
-    return(null)
+    return(NULL)
   }
   
   zreg = model$z
@@ -1253,7 +1027,7 @@ plot_model = function(model,CI=0.95,title=NULL){
   ypred_fix = fixreg%*%fixbeta
   x_t = seq(1,dim(y)[1],1)
   tbl = data.frame(x_t,y,ypred_break,ypred_fix,stringsAsFactors = TRUE)
-  colnames(tbl) = c('time',model$y_name,'ypred_break','ypred_fix')
+  colnames(tbl) = c('time','y','ypred_break','ypred_fix')
   
   
   #labels and annotations for date's CIs
@@ -1296,7 +1070,6 @@ plot_model = function(model,CI=0.95,title=NULL){
     beta_lb = beta-sd
     beta_ub = beta+sd
   }
-  
   tbl$ypred_ub = reg%*%beta_ub
   tbl$ypred_lb = reg%*%beta_lb
   colnames(CI_seg) = c('lb','ub','y')

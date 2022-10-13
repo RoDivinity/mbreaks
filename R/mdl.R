@@ -71,7 +71,7 @@
 #' \itemize{
 #' \item{\code{\link{dotest}}: Procedure to conduct SupF test of 0 versus m breaks and
 #'  Double Max test.}
-#' \item{\code{\link{dospflp1}}: Procedure to conduct sequential SupF(l+1|l) (l versus l+1 breaks)}
+#' \item{\code{\link{doseqtests}}: Procedure to conduct sequential SupF(l+1|l) (l versus l+1 breaks)}
 #' \item{\code{\link{doorder}}: Procedure to find number of break by criteria selection 
 #' (including BIC and LWZ criterion)}
 #' \item{\code{\link{dosequa}}: Procedure to find number of break and break dates via sequential method}
@@ -90,11 +90,7 @@
 
 mdl <- function(y_name,z_name = NULL,x_name = NULL,data,eps1 = 0.15,m = -1,prewhit = 1,
                            robust = 1,hetdat = 1,hetvar = 1,hetomega = 1,hetq = 1,
-    maxi = 10,eps = 0.00001,fixn=-1,printd = 0){
-  #handle data
-  y_ind = match(y_name,colnames(data))
-  x_ind = match(x_name,colnames(data))
-  z_ind = match(z_name,colnames(data))
+    maxi = 10,eps = 0.00001,fixn=-1,printd = 0,const=1){
   
   if(printd==1){
   cat('The options chosen are:\n')
@@ -105,23 +101,17 @@ mdl <- function(y_name,z_name = NULL,x_name = NULL,data,eps1 = 0.15,m = -1,prewh
   
   mdl = list()
 
-  if(is.na(y_ind)){
-    print('No dependent variable found. Please try again')
-    return(NULL)}
+  
 
-  y = data[,y_ind]
-  y = data.matrix(y)
-  T = dim(y)[1]
-
-  if (is.null(x_name)) {x = c()}
-  else{
-    if(anyNA(x_ind)){print('No x regressors found. Please try again')}
-    else{x = data.matrix(data[,x_ind,drop=FALSE])}}
-  if (is.null(z_name)) {z = matrix(1L,T,1)}
-  else{
-    if(anyNA(z_ind)){print('No z regressors found. Please try again')}
-    else{z = data.matrix(data[,z_ind,drop=FALSE])}}
-
+  pdat = process_data(y_name,z_name,x_name,data=data,const=const)
+  
+  y=pdat$y
+  x=pdat$x
+  z=pdat$z
+  y_name = pdat$y_name
+  z_name = pdat$z_name
+  x_name = pdat$x_name
+  
   #set maximum breaks
   v_eps1 = c(0.05,0.10,0.15,0.20,0.25)
   v_m = c(10,8,5,3,2)
@@ -152,31 +142,31 @@ mdl <- function(y_name,z_name = NULL,x_name = NULL,data,eps1 = 0.15,m = -1,prewh
   mdl$sbtests = dotest(y_name=y_name,z_name=z_name,x_name=x_name,data=data,m=m,
                      eps=eps,eps1=eps1,maxi=maxi,fixb=fixb,
                      betaini=betaini,printd=0,prewhit=prewhit,robust=robust,
-                     hetdat=hetdat,hetvar=hetvar)
+                     hetdat=hetdat,hetvar=hetvar,const=const)
   #Sequential test
   mdl$seqtests = doseqtests(y_name=y_name,z_name=z_name,x_name=x_name,data=data,m=m,
                         eps=eps,eps1=eps1,maxi=maxi,fixb=fixb,
                         betaini=betaini,printd=0,prewhit=prewhit,robust=robust,
-                        hetdat=hetdat,hetvar=hetvar)
+                        hetdat=hetdat,hetvar=hetvar,const=const)
   #Information criteria to select num of breaks and estimate break dates
   mdl$BIC = doorder(y_name=y_name,z_name=z_name,x_name = x_name,data=data,
                     m=m,eps=eps,eps1=eps1,maxi=maxi,fixb=fixb,
-                    betaini=betaini,printd=printd,bic_opt = 1)
+                    betaini=betaini,printd=printd,bic_opt = 1,const=const)
   mdl$MSIC = doorder(y_name=y_name,z_name=z_name,x_name = x_name,data=data,
                     m=m,eps=eps,eps1=eps1,maxi=maxi,fixb=fixb,
-                    betaini=betaini,printd=printd,bic_opt = 0)
+                    betaini=betaini,printd=printd,bic_opt = 0,const=const)
   #Sequential procedure to select num of breaks and estimate break dates
   mdl$SEQ = dosequa(y_name=y_name,z_name=z_name,x_name=x_name,data=data,
                       m=m,eps=eps,eps1=eps1,maxi=maxi,fixb=fixb,betaini=betaini,
-                      printd=printd,prewhit=prewhit,robust=robust,hetdat=hetdat,hetvar=hetvar)
+                      printd=printd,prewhit=prewhit,robust=robust,hetdat=hetdat,hetvar=hetvar,const=const)
   #Repartition procedure to select num of breaks and estimate break dates
   mdl$repart = dorepart(y_name=y_name,z_name=z_name,x_name=x_name,data=data,
                         m=m,eps=eps,eps1=eps1,maxi=maxi,fixb=fixb,betaini=betaini,
-                        printd=printd,prewhit=prewhit,robust=robust,hetdat=hetdat,hetvar=hetvar)
+                        printd=printd,prewhit=prewhit,robust=robust,hetdat=hetdat,hetvar=hetvar,const=const)
   
   mdl$fix = dofix(y_name=y_name,z_name=z_name,x_name=x_name,data=data,
                   fixn=fixn,eps=eps,eps1=eps1,maxi=maxi,fixb=fixb,betaini=betaini,
-                  printd=printd,prewhit=prewhit,robust=robust,hetdat=hetdat,hetvar=hetvar)
+                  printd=printd,prewhit=prewhit,robust=robust,hetdat=hetdat,hetvar=hetvar,const=const)
   #reorganize the results into the list
   class(mdl) <- 'mdl'
   mdl$maxb = m
@@ -187,17 +177,18 @@ mdl <- function(y_name,z_name = NULL,x_name = NULL,data,eps1 = 0.15,m = -1,prewh
 
 
 #'@export
-print.mdl <- function(model,digits = -1,...)
+print.mdl <- function(x,...)
 {
-  cat(paste('Number of max breaks specified: ',model$maxb),'\n')
+  digits = max(3L, getOption("digits") - 3L)
+  cat(paste('Number of max breaks specified: ',x$maxb),'\n')
   cat('-----------------------------------------------------')
-  if (is.null(model$BIC)) {cat('\nNo breaks were founded\n')}
+  if (is.null(x$BIC)) {cat('\nNo breaks were founded\n')}
   else{
-  print(model$BIC)}
+  print(x$BIC)}
   cat('-----------------------------------------------------')
-  print(model$sbtests)
+  print(x$sbtests)
   cat('-----------------------------------------------------')
-  print(model$seqtests)
+  print(x$seqtests)
   cat('-----------------------------------------------------')
   
   cat(paste('\nTo access additional information about specific procedures 
@@ -212,7 +203,7 @@ print.mdl <- function(model,digits = -1,...)
   # cat(paste('7) Pre-specified #s of breaks: ','fix'),'\n')
   
   
-  invisible(model)
+  invisible(x)
 }
 
 
