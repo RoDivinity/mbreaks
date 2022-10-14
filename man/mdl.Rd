@@ -21,7 +21,8 @@ mdl(
   eps = 1e-05,
   fixn = -1,
   printd = 0,
-  const = 1
+  const = 1,
+  signif = 2
 )
 }
 \arguments{

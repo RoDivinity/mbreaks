@@ -20,7 +20,8 @@ dosequa(
   robust = 1,
   hetdat = 1,
   hetvar = 1,
-  const = 1
+  const = 1,
+  signif = 2
 )
 }
 \arguments{
