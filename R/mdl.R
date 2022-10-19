@@ -1,10 +1,10 @@
 #Main program to handle users' input
 
 #' Robust structural change estimation
-#' 
-#' @description 
+#'
+#' @description
 #' Function executes all the main procedures to estimate either i) pure structural
-#' breaks model or ii) partial structural breaks model 
+#' breaks model or ii) partial structural breaks model
 #'
 #' @param y_name name of dependent variable in the data set
 #' @param z_name name of independent variables in the data set which coefficients are allowed to change
@@ -15,7 +15,7 @@
 #' @param eps1 value of trimming (in percentage) for the construction
 #' and critical values. Minimal segment length will be set
 #' at \code{default} = int(\code{eps1}*T) (T is total sample size).
-#  There are five options: 
+#  There are five options:
 #' \itemize{
 #' \item{\code{eps1}=.05: Maximal value of \code{m} = 10}
 #' \item{\code{eps1}=.10: Maximal value of \code{m} = 8}
@@ -53,7 +53,7 @@
 #' @param eps convergence criterion for recursive calculations
 #' @param fixn number of pre-specified breaks. \code{default} = -1. It will be replaced
 #' automatically to 2 if no specification is given
-#' @param printd Print option for model estimation. \code{default} = 0, to 
+#' @param printd Print option for model estimation. \code{default} = 0, to
 #' suppress intermediate outputs printing to console
 #' @return  A list that contains the following:
 #'\itemize{
@@ -65,53 +65,53 @@
 #'\item{repart: Estimated number of breaks by repartition procedure the corresponding model}
 #'\item{fix: Estimated model with pre-specified number of breaks}
 #'}
-#' 
-#' @details 
+#'
+#' @details
 #' The 7 main procedures include:
 #' \itemize{
 #' \item{\code{\link{dotest}}: Procedure to conduct SupF test of 0 versus m breaks and
 #'  Double Max test.}
 #' \item{\code{\link{doseqtests}}: Procedure to conduct sequential SupF(l+1|l) (l versus l+1 breaks)}
-#' \item{\code{\link{doorder}}: Procedure to find number of break by criteria selection 
+#' \item{\code{\link{doorder}}: Procedure to find number of break by criteria selection
 #' (including BIC and LWZ criterion)}
 #' \item{\code{\link{dosequa}}: Procedure to find number of break and break dates via sequential method}
 #' \item{\code{\link{dorepart}}: Procedure to find number of break and break dates via repartition method}
-#' \item{\code{fix}: Procedure to find number of break by pre-specified number of breaks, which are set at \code{default} 
+#' \item{\code{fix}: Procedure to find number of break by pre-specified number of breaks, which are set at \code{default}
 #' to be 2 }}
-#' 
-#' 
+#'
+#'
 #' All \code{default} values of error assumptions (\code{robust},
-#' \code{hetdat}, \code{hetvar}, \code{hetq}) will be set to 1. The implications on 
-#' the structure of model's errors related to individual settings are explained within 
+#' \code{hetdat}, \code{hetvar}, \code{hetq}) will be set to 1. The implications on
+#' the structure of model's errors related to individual settings are explained within
 #' the arguments section for each option. Users can separately invoke only one at a
 #' time one of the main7 procedures mentioned above
-#' 
+#'
 #' @export
 
 mdl <- function(y_name,z_name = NULL,x_name = NULL,data,eps1 = 0.15,m = -1,prewhit = 1,
                            robust = 1,hetdat = 1,hetvar = 1,hetomega = 1,hetq = 1,
-    maxi = 10,eps = 0.00001,fixn=-1,printd = 0,const=1){
-  
+    maxi = 10,eps = 0.00001,fixn=-1,printd = 0,const=1,signif=2){
+
   if(printd==1){
   cat('The options chosen are:\n')
   cat(paste(' i) hetdat = ',hetdat),'\n',paste('ii) hetvar = ',hetvar),'\n',
       paste('iii) hetomega = ',hetomega),'\n',paste('iv) hetq = ',hetq),'\n',
       paste('v) robust = ',robust),'\n',paste('vi) prewhite = ',prewhit),'\n')
   }
-  
+
   mdl = list()
 
-  
+
 
   pdat = process_data(y_name,z_name,x_name,data=data,const=const)
-  
+
   y=pdat$y
   x=pdat$x
   z=pdat$z
   y_name = pdat$y_name
   z_name = pdat$z_name
   x_name = pdat$x_name
-  
+
   #set maximum breaks
   v_eps1 = c(0.05,0.10,0.15,0.20,0.25)
   v_m = c(10,8,5,3,2)
@@ -158,20 +158,20 @@ mdl <- function(y_name,z_name = NULL,x_name = NULL,data,eps1 = 0.15,m = -1,prewh
   #Sequential procedure to select num of breaks and estimate break dates
   mdl$SEQ = dosequa(y_name=y_name,z_name=z_name,x_name=x_name,data=data,
                       m=m,eps=eps,eps1=eps1,maxi=maxi,fixb=fixb,betaini=betaini,
-                      printd=printd,prewhit=prewhit,robust=robust,hetdat=hetdat,hetvar=hetvar,const=const)
+                      printd=printd,prewhit=prewhit,robust=robust,hetdat=hetdat,hetvar=hetvar,const=const,signif=signif)
   #Repartition procedure to select num of breaks and estimate break dates
   mdl$repart = dorepart(y_name=y_name,z_name=z_name,x_name=x_name,data=data,
                         m=m,eps=eps,eps1=eps1,maxi=maxi,fixb=fixb,betaini=betaini,
-                        printd=printd,prewhit=prewhit,robust=robust,hetdat=hetdat,hetvar=hetvar,const=const)
-  
+                        printd=printd,prewhit=prewhit,robust=robust,hetdat=hetdat,hetvar=hetvar,const=const,signif=signif)
+
   mdl$fix = dofix(y_name=y_name,z_name=z_name,x_name=x_name,data=data,
                   fixn=fixn,eps=eps,eps1=eps1,maxi=maxi,fixb=fixb,betaini=betaini,
                   printd=printd,prewhit=prewhit,robust=robust,hetdat=hetdat,hetvar=hetvar,const=const)
   #reorganize the results into the list
   class(mdl) <- 'mdl'
   mdl$maxb = m
-  
-  
+
+
   return(mdl)
   }
 
@@ -190,19 +190,11 @@ print.mdl <- function(x,...)
   cat('-----------------------------------------------------')
   print(x$seqtests)
   cat('-----------------------------------------------------')
-  
-  cat(paste('\nTo access additional information about specific procedures 
+
+  cat(paste('\nTo access additional information about specific procedures
   (not included above), type stored variable name + \'$\' + procedure name'))
-  # cat('\nList of procedure\'s names stored in the results:\n')
-  # cat(paste('1) Sup F tests: ','\t\tWtest'),'\n')
-  # cat(paste('2) Sequential tests: ','\t\tspflp1'),'\n')
-  # cat(paste('3) BIC model selection: ','\tBIC'),'\n')
-  # cat(paste('4) LWZ model selection: ','\tLWZ'),'\n')
-  # cat(paste('5) Sequential procedure: ','\tsequa'),'\n')
-  # cat(paste('6) Repartition procedure: ','\trepart'),'\n')
-  # cat(paste('7) Pre-specified #s of breaks: ','fix'),'\n')
-  
-  
+
+
   invisible(x)
 }
 

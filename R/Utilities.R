@@ -387,7 +387,7 @@ cvg = function(eta,phi1s,phi2s){
     while(abs(crit) >= 0.000001) {
       cct = cct + 1
       if (cct > 100){
-        print('the procedure to get critical values for the break dates has reached the upper bound on the number of iterations. This may happens in the procedure cvg. The resulting confidence interval for this break date is incorect')
+        cat('the procedure to get critical values for the break dates has reached the upper bound on the number of iterations. This may happens in the procedure cvg. The resulting confidence interval for this break date is incorect')
         break
       }
       else{
@@ -556,28 +556,27 @@ process_data = function(y_name,z_name = NULL,x_name = NULL,data,const){
   y_ind = match(y_name,colnames(data))
   x_ind = match(x_name,colnames(data))
   z_ind = match(z_name,colnames(data))
-  
+
   if(is.na(y_ind)){
-    cat('No matching dependent variable y. Please try again')
+    stop('No matching dependent variable y. Please try again')
     return(NULL)}
   else{
   y = data[,y_ind]
   y = data.matrix(y)
   T = dim(y)[1]
-  
-  
+
+
   if (is.null(x_name)) {x = c()}
   else{
-    if(anyNA(x_ind)){cat('No x regressors found. Please try again') 
-      return(NULL)}
+    if(anyNA(x_ind)){stop('No x regressors found. Please try again')
+     }
     else{x = data.matrix(data[,x_ind,drop=FALSE])}}
   if (is.null(z_name)) {
     if (const == 1) {z = matrix(1L,T,1)}
-    else {cat('No regressors in the model. Please specify at least 1 regressors')
-      return(NULL)}}
+    else {stop('No regressors in the model. Please specify at least 1 regressors')}
+    }
   else{
-    if(anyNA(z_ind)){print('No z regressors found. Please try again')
-      return(NULL)}
+    if(anyNA(z_ind)){stop('No z regressors found. Please try again')}
     else{
       if (const == 1){
         z = data.matrix(data[,z_ind,drop=FALSE])
@@ -586,7 +585,7 @@ process_data = function(y_name,z_name = NULL,x_name = NULL,data,const){
         z = data.matrix(data[,z_ind,drop=FALSE])
       }}}
   out = list();
-  #store y,x,z name and corresponding x,y and z data 
+  #store y,x,z name and corresponding x,y and z data
   out$y_name = y_name
   out$z_name = z_name
   out$x_name = x_name
@@ -594,7 +593,7 @@ process_data = function(y_name,z_name = NULL,x_name = NULL,data,const){
   out$z = z
   out$x = x
   }
-  
+
   return(out)
 }
 

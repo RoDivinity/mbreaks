@@ -52,6 +52,7 @@ jhatpr = function(vmat) {
 #'@param prewhit Option of using prewhitening process. If \code{1}, an AR(1)
 #'process will be used to filter. If \code{0}, skipped the filtering process
 #'@return hac Heteroskedasticy and autocorrelation consistent errors
+#'@export
 ####
 correct = function (reg,res,prewhit){
   #initialize storage

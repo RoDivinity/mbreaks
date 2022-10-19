@@ -109,9 +109,9 @@ for (i in 1:m){
 
 dotest = function(y_name,z_name=NULL,x_name=NULL,data,
                   m=5,eps=0.00001,eps1=0.15,maxi=10,fixb=0,betaini=0,printd=0,prewhit=1,robust=1,
-                  hetdat=1,hetvar=1,const=1){
+                  hetdat=1,hetvar=1,hetq=1,hetomega=1,const=1){
   if(eps1 <0.05 || eps1 >0.5){
-    cat('Invalid trimming level, set trimming level to 15%')
+    warning('Invalid trimming level, set trimming level to 15%')
     eps1 = 0.15
   }
 
@@ -120,13 +120,10 @@ dotest = function(y_name,z_name=NULL,x_name=NULL,data,
   y = df$y
   z = df$z
   x = df$x
-  if(m<0){
-    cat('\nThe maximum number of breaks cannot be negative, set m = 5\n')
-    m = 5
-  }
+
 
   if(m==0){
-    cat('The test is undefined for no breaks model')
+    warning('The test is undefined for no breaks model')
     out = list()
     out$mbreak = 0;
     class(out) = 'sbtests'
@@ -142,11 +139,16 @@ dotest = function(y_name,z_name=NULL,x_name=NULL,data,
 
     upper_m = floor(bigT/h)-1
     if(m>upper_m){
-      cat(paste('\nNot enough observations for',m+1,'segments with minimum length per segment =',
+      warning(paste('\nNot enough observations for',m+1,'segments with minimum length per segment =',
                 h,'.The total required observations for such',m,'breaks would be ',(m+1)*h,'>T=',bigT,'\n'))
       cat(paste('Set m to',upper_m,'\n'))
       m=upper_m
 
+    }
+
+    if(m<0){
+      warning(paste('\nThe maximum number of breaks cannot be negative, set m = ',upper_m))
+      m = upper_m
     }
 
 
@@ -247,9 +249,9 @@ dotest = function(y_name,z_name=NULL,x_name=NULL,data,
 doseqtests = function(y_name,z_name=NULL,x_name=NULL,data,
                     m=5,eps=0.00001,eps1=0.15,maxi=10,fixb=0,betaini=0,printd=0,
                     prewhit=1,
-                    robust=1,hetdat=1,hetvar=1,const=1) {
+                    robust=1,hetdat=1,hetvar=1,hetq=1,hetomega=1,const=1) {
   if(eps1 <0.05 || eps1 >0.5){
-    cat('Invalid trimming level, set trimming level to 15%')
+    warning('Invalid trimming level, set trimming level to 15%')
     eps1 = 0.15
   }
 
@@ -269,15 +271,15 @@ doseqtests = function(y_name,z_name=NULL,x_name=NULL,data,
 
   upper_m = floor(bigT/h)-1
   if(m>upper_m){
-    cat(paste('\nNot enough observations for',m+1,'segments with minimum length per segment =',
+    warning(paste('\nNot enough observations for',m+1,'segments with minimum length per segment =',
               h,'.The total required observations for such',m,'breaks would be ',(m+1)*h,'>T=',bigT,'\n'))
-    cat(paste('Set m to',upper_m,'\n'))
+    message(paste('Set m to',upper_m,'\n'))
     m=upper_m
   }
 
   if(m<=0){
-    cat('\nMaximum number of breaks cannot be non-positive\n')
-    cat(paste('Set m to',upper_m,'\n'))
+    warning('\nMaximum number of breaks cannot be non-positive\n')
+    message(paste('Set m to',upper_m,'\n'))
     m=upper_m
   }
 
@@ -349,7 +351,7 @@ doorder = function(y_name,z_name = NULL,x_name = NULL,data,
                    betaini=0,printd=0,bic_opt=1,const=1) {
   #check trimming value
   if(eps1 <0.05 || eps1 >0.5){
-    cat('Invalid trimming level, set trimming level to 15%')
+    warning('Invalid trimming level, set trimming level to 15%')
     eps1 = 0.15
   }
 
@@ -367,15 +369,15 @@ doorder = function(y_name,z_name = NULL,x_name = NULL,data,
   #check m
   upper_m = floor(bigT/h)-1
   if(m>upper_m){
-    cat(paste('\nNot enough observations for',m+1,'segments with minimum length per segment =',
+    warning(paste('\nNot enough observations for',m+1,'segments with minimum length per segment =',
               h,'.The total required observations for such',m,'breaks would be ',(m+1)*h,'>T=',bigT,'\n'))
-    cat(paste('Set m to',upper_m,'\n'))
+    message(paste('Set m to',upper_m,'\n'))
     m=upper_m
   }
 
   if (m<=0){
-    cat('\nMaximum number of breaks cannot be less than 1\n')
-    cat(paste('Set m to',upper_m,'\n'))
+    warning('\nMaximum number of breaks cannot be less than 1\n')
+    message(paste('Set m to',upper_m,'\n'))
     m=upper_m
   }
   if (p == 0){zz = z}
@@ -397,8 +399,6 @@ doorder = function(y_name,z_name = NULL,x_name = NULL,data,
     bic [i,1] = log(glob[i,1]/bigT) + log(bigT)*(i-1)*(q+1)/bigT
     lwz[i,1] = log(glob[i,1]/(bigT-i*q-i+1)) +
       ((i-1)*(q+1)*c0*(log(bigT))^(2+delta0))/bigT
-
-
   }
 
   mBIC = which.min(bic) - 1
@@ -413,7 +413,7 @@ doorder = function(y_name,z_name = NULL,x_name = NULL,data,
   }
 
   if (mSEL == 0){
-    cat('\nThere are no breaks selected by ',p_name,'and estimation is skipped\n')
+    message('\nThere are no breaks selected by ',p_name,'and estimation is skipped\n')
     out = list()
     out$p_name = p_name
     out$nbreak = mSEL
@@ -482,7 +482,7 @@ dosequa = function(y_name,z_name=NULL,x_name=NULL,data,
                    prewhit=1,robust=1,hetdat=1,hetvar=1,const=1,signif=2) {
 
   if(eps1 <0.05 || eps1 >0.5){
-    cat('Invalid trimming level, set trimming level to 15%')
+    warning('Invalid trimming level, set trimming level to 15%')
     eps1 = 0.15
   }
 
@@ -497,18 +497,17 @@ dosequa = function(y_name,z_name=NULL,x_name=NULL,data,
   q = dim(z)[2]
   bigT = dim(y)[1]
   h = round(eps1*bigT)
-
   upper_m = floor(bigT/h)-1
   if(m>upper_m){
-    cat(paste('\nNot enough observations for',m+1,'segments with minimum length per segment =',
+    warning(paste('\nNot enough observations for',m+1,'segments with minimum length per segment =',
               h,'.The total required observations for such',m,'breaks would be ',(m+1)*h,'>T=',bigT,'\n'))
-    cat(paste('Set m to',upper_m,'\n'))
+    message(paste('Set m to',upper_m,'\n'))
     m=upper_m
   }
 
   if (m<=0){
-    cat('\nMaximum number of breaks cannot be less than 1\n')
-    cat(paste('Set m to',upper_m,'\n'))
+    warning('\nMaximum number of breaks cannot be less than 1\n')
+    message(paste('Set m to',upper_m,'\n'))
     m=upper_m
   }
 
@@ -541,7 +540,7 @@ dosequa = function(y_name,z_name=NULL,x_name=NULL,data,
   mSEL = nbreak
 
   if (mSEL == 0){
-    cat('\nThere are no breaks selected by sequential and estimation is skipped\n')
+    message('\nThere are no breaks selected by sequential and estimation is skipped\n')
     out = list()
     out$p_name = 'dosequa'
     out$nbreak = mSEL
@@ -607,7 +606,7 @@ dorepart = function(y_name,z_name = NULL,x_name = NULL,data,
                     prewhit=1,robust=1,hetdat=1,hetvar=1,const=1,signif=2){
 
   if(eps1 <0.05 || eps1 >0.5){
-    cat('Invalid trimming level, set trimming level to 15%')
+    warning('Invalid trimming level, set trimming level to 15%')
     eps1 = 0.15
   }
 
@@ -625,14 +624,14 @@ dorepart = function(y_name,z_name = NULL,x_name = NULL,data,
 
   upper_m = floor(bigT/h)-1
   if(m>upper_m){
-    cat(paste('\nNot enough observations for',m+1,'segments with minimum length per segment =',
+    warning(paste('\nNot enough observations for',m+1,'segments with minimum length per segment =',
               h,'.The total required observations for such',m,'breaks would be ',(m+1)*h,'>T=',bigT,'\n'))
-    cat(paste('Set m to',upper_m,'\n'))
+    message(paste('Set m to',upper_m,'\n'))
     m=upper_m
   }
   if (m<=0){
-    cat('\nMaximum number of breaks cannot be less than 1\n')
-    cat(paste('Set m to',upper_m,'\n'))
+    warning('\nMaximum number of breaks cannot be less than 1\n')
+    message(paste('Set m to',upper_m,'\n'))
     m=upper_m
   }
 
@@ -646,7 +645,7 @@ dorepart = function(y_name,z_name = NULL,x_name = NULL,data,
     temp = sequa(m,signif,q,h,bigT,robust,prewhit,z,y,x,p,hetdat,hetvar,eps1)
     nbreak = temp$nbreak
     if (temp$nbreak == 0){
-      cat('\nThere are no breaks selected by sequential procedure and the repartition procedure is skipped.\n')
+      message('\nThere are no breaks selected by sequential procedure and the repartition procedure is skipped.\n')
       out=list()
       out$p_name = 'dorepart'
       out$nbreak = 0
@@ -666,7 +665,7 @@ dorepart = function(y_name,z_name = NULL,x_name = NULL,data,
 
 
   if (mSEL == 0){
-    cat('\nThere are no breaks selected by sequential procedure and estimation is skipped\n')
+    message('\nThere are no breaks selected by sequential procedure and estimation is skipped\n')
     out = list()
     out$p_name = 'dorepart'
     out$nbreak = mSEL
@@ -729,15 +728,15 @@ dorepart = function(y_name,z_name = NULL,x_name = NULL,data,
 #Estimate a model with pre-specified number of breaks
 dofix = function(y_name,z_name = NULL,x_name=NULL,data,
                     fixn=5,eps=0.00001,eps1=0.15,maxi=10,fixb=0,betaini=0,printd=0,
-                    prewhit=1,robust=1,hetdat=1,hetvar=1,const=1){
+                    prewhit=1,robust=1,hetdat=1,hetvar=1,hetq=1,hetomega=1,const=1){
 
   if(eps1 <0.05 || eps1 >0.5){
-    cat('Invalid trimming level, set trimming level to 15%')
+    warning('Invalid trimming level, set trimming level to 15%')
     eps1 = 0.15
   }
 
   if(fixn<0){
-    cat('\nThe maximum number of breaks cannot be negative, set prespecified breaks = 2\n')
+    warning('\nThe maximum number of breaks cannot be negative, set prespecified breaks = 2\n')
     fixn = 2
   }
 
@@ -756,21 +755,21 @@ dofix = function(y_name,z_name = NULL,x_name=NULL,data,
 
   upper_m = floor(bigT/h)-1
   if(fixn>upper_m){
-    cat(paste('\nNot enough observations for',fixn+1,'segments with minimum length per segment =',
+    warning(paste('\nNot enough observations for',fixn+1,'segments with minimum length per segment =',
               h,'.The total required observations for such',fixn,'breaks would be ',(fixn+1)*h,'>T=',bigT,'\n'))
-    cat(paste('Set m to',upper_m,'\n'))
+    message(paste('Set m to',upper_m,'\n'))
     fixn=upper_m
   }
   if (fixn<=0){
-    cat('\nMaximum number of breaks cannot be non-positive\n')
-    cat(paste('Set m to',upper_m,'\n'))
+    warning('\nMaximum number of breaks cannot be non-positive\n')
+    message(paste('Set m to',upper_m,'\n'))
     fixn=upper_m
   }
 
 t_out = doglob(y,z,x,fixn,eps,eps1,maxi,fixb,betaini,printd)
 datevec = t_out$datevec
 if(length(datevec) == 0){
-  cat('\nThere are no breaks selected by the procedure\n')
+  message('\nThere are no breaks selected by the procedure\n')
   out = list()
   out$p_name = 'dofix'
   out$nbreak = length(datevec)
@@ -977,7 +976,7 @@ compile_sbtests <- function(x,digits = -1,...)
 
 print.sbtests <- function(x,...)
 { if(x$mbreak == 0){
-  cat('\nThe test is undefined for no break model\n')
+  warning('\nThe test is undefined for no break model\n')
 }else{
   cat('\na) SupF tests against a fixed number of breaks\n\n')
   print(x$supF1,quote=FALSE)
@@ -989,11 +988,11 @@ print.sbtests <- function(x,...)
 
 compile_seqtests = function(x){
   if(x$mbreak==1){
-    cat('\nThe test is exactly 0 versus 1 break, hence the sequential test is not repeated\n')
+    message('\nThe test is exactly 0 versus 1 break, hence the sequential test is not repeated\n')
     x$sfl = NULL
     return(x)
   }else if (x$mbreak==0){
-    cat('\nThe test is undefined for maximum break = 0\n')
+    warning('\nThe test is undefined for maximum break = 0\n')
     x$sfl = NULL
     return(x)
   }
@@ -1042,10 +1041,11 @@ print.seqtests = function(x,...){
 plot_model = function(model,CI=0.95,title=NULL){
   m = model$nbreak
   if(m==0){
-    cat('The model has no break. Visualization for comparison between structural breaks
+    warning('The model has no break. Visualization for comparison between structural breaks
         versus no breaks is skipped')
     return(NULL)
   }
+
 
   zreg = model$z
   xreg = model$x
@@ -1091,7 +1091,7 @@ plot_model = function(model,CI=0.95,title=NULL){
   }
 
   if(!CI==0.95&&!CI==0.90){
-    cat('Not available CI level, set to 95%')
+    warning('Not available CI level, set to 95%')
     CI = 0.95
   }
   if(CI == 0.95){
