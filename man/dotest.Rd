@@ -20,6 +20,8 @@ dotest(
   robust = 1,
   hetdat = 1,
   hetvar = 1,
+  hetq = 1,
+  hetomega = 1,
   const = 1
 )
 }
