@@ -61,6 +61,7 @@
 #'\item{spflp1: Sequential Sup F test of l versus l+1 breaks }
 #'\item{BIC: Estimated number of breaks by BIC and the corresponding model}
 #'\item{LWZ: Estimated number of breaks by LWZ and the corresponding model}
+#'\item{KT: Estimated number of breaks by KT and the corresponding model}
 #'\item{sequa: Estimated number of breaks by sequential procedure the corresponding model}
 #'\item{repart: Estimated number of breaks by repartition procedure the corresponding model}
 #'\item{fix: Estimated model with pre-specified number of breaks}
@@ -73,7 +74,7 @@
 #'  Double Max test.}
 #' \item{\code{\link{doseqtests}}: Procedure to conduct sequential SupF(l+1|l) (l versus l+1 breaks)}
 #' \item{\code{\link{doorder}}: Procedure to find number of break by criteria selection
-#' (including BIC and LWZ criterion)}
+#' (including BIC, LWZ and KT criterion)}
 #' \item{\code{\link{dosequa}}: Procedure to find number of break and break dates via sequential method}
 #' \item{\code{\link{dorepart}}: Procedure to find number of break and break dates via repartition method}
 #' \item{\code{fix}: Procedure to find number of break by pre-specified number of breaks, which are set at \code{default}
@@ -121,7 +122,7 @@ mdl <- function(y_name,z_name = NULL,x_name = NULL,data,eps1 = 0.15,m = -1,prewh
   siglev=matrix(c(10,5,2.5,1),4,1)
 
   if(is.na(index)) {
-    print('Invalid trimming level, please choose 1 of the following values')
+    warning('Invalid trimming level, please choose 1 of the following values')
     print(v_eps1)
     return(NULL)
   }
@@ -151,27 +152,29 @@ mdl <- function(y_name,z_name = NULL,x_name = NULL,data,eps1 = 0.15,m = -1,prewh
   #Information criteria to select num of breaks and estimate break dates
   mdl$BIC = doorder(y_name=y_name,z_name=z_name,x_name = x_name,data=data,
                     m=m,eps=eps,eps1=eps1,maxi=maxi,fixb=fixb,
-                    betaini=betaini,printd=printd,bic_opt = 1,const=const)
-  mdl$MSIC = doorder(y_name=y_name,z_name=z_name,x_name = x_name,data=data,
+                    betaini=betaini,printd=printd,opt = 'BIC',const=const)
+  mdl$LWZ = doorder(y_name=y_name,z_name=z_name,x_name = x_name,data=data,
                     m=m,eps=eps,eps1=eps1,maxi=maxi,fixb=fixb,
-                    betaini=betaini,printd=printd,bic_opt = 0,const=const)
+                    betaini=betaini,printd=printd,opt = 'LWZ',const=const)
+  mdl$KT = doorder(y_name=y_name,z_name=z_name,x_name = x_name,data=data,
+                    m=m,eps=eps,eps1=eps1,maxi=maxi,fixb=fixb,
+                    betaini=betaini,printd=printd,opt = 'KT',const=const)
   #Sequential procedure to select num of breaks and estimate break dates
   mdl$SEQ = dosequa(y_name=y_name,z_name=z_name,x_name=x_name,data=data,
                       m=m,eps=eps,eps1=eps1,maxi=maxi,fixb=fixb,betaini=betaini,
                       printd=printd,prewhit=prewhit,robust=robust,hetdat=hetdat,hetvar=hetvar,const=const,signif=signif)
-  #Repartition procedure to select num of breaks and estimate break dates
-  mdl$repart = dorepart(y_name=y_name,z_name=z_name,x_name=x_name,data=data,
-                        m=m,eps=eps,eps1=eps1,maxi=maxi,fixb=fixb,betaini=betaini,
-                        printd=printd,prewhit=prewhit,robust=robust,hetdat=hetdat,hetvar=hetvar,const=const,signif=signif)
 
-  mdl$fix = dofix(y_name=y_name,z_name=z_name,x_name=x_name,data=data,
-                  fixn=fixn,eps=eps,eps1=eps1,maxi=maxi,fixb=fixb,betaini=betaini,
-                  printd=printd,prewhit=prewhit,robust=robust,hetdat=hetdat,hetvar=hetvar,const=const)
+
+  #Repartition procedure to select num of breaks and estimate break dates
+  #mdl$repart = dorepart(y_name=y_name,z_name=z_name,x_name=x_name,data=data,
+  #                      m=m,eps=eps,eps1=eps1,maxi=maxi,fixb=fixb,betaini=betaini,
+  #                      printd=printd,prewhit=prewhit,robust=robust,hetdat=hetdat,hetvar=hetvar,const=const,signif=signif)
+
+  #mdl$fix = dofix(y_name=y_name,z_name=z_name,x_name=x_name,data=data,
+  #                fixn=fixn,eps=eps,eps1=eps1,maxi=maxi,fixb=fixb,betaini=betaini,
+  #                printd=printd,prewhit=prewhit,robust=robust,hetdat=hetdat,hetvar=hetvar,const=const)
   #reorganize the results into the list
   class(mdl) <- 'mdl'
-  mdl$maxb = m
-
-
   return(mdl)
   }
 
@@ -193,8 +196,6 @@ print.mdl <- function(x,...)
 
   cat(paste('\nTo access additional information about specific procedures
   (not included above), type stored variable name + \'$\' + procedure name'))
-
-
   invisible(x)
 }
 

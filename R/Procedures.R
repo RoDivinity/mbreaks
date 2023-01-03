@@ -110,11 +110,7 @@ for (i in 1:m){
 dotest = function(y_name,z_name=NULL,x_name=NULL,data,
                   m=5,eps=0.00001,eps1=0.15,maxi=10,fixb=0,betaini=0,printd=0,prewhit=1,robust=1,
                   hetdat=1,hetvar=1,hetq=1,hetomega=1,const=1){
-  if(eps1 <0.05 || eps1 >0.5){
-    warning('Invalid trimming level, set trimming level to 15%')
-    eps1 = 0.15
-  }
-
+  eps1=check_trimming(eps1)
   siglev=matrix(c(10,5,2.5,1),4,1)
   df = process_data(y_name = y_name,z_name = z_name,x_name = x_name,data=data,const)
   y = df$y
@@ -137,19 +133,7 @@ dotest = function(y_name,z_name=NULL,x_name=NULL,data,
     bigT = dim(y)[1]
     h = round(eps1*bigT)
 
-    upper_m = floor(bigT/h)-1
-    if(m>upper_m){
-      warning(paste('\nNot enough observations for',m+1,'segments with minimum length per segment =',
-                h,'.The total required observations for such',m,'breaks would be ',(m+1)*h,'>T=',bigT,'\n'))
-      cat(paste('Set m to',upper_m,'\n'))
-      m=upper_m
-
-    }
-
-    if(m<0){
-      warning(paste('\nThe maximum number of breaks cannot be negative, set m = ',upper_m))
-      m = upper_m
-    }
+    m = check_m(bigT,eps1,m)
 
 
   out = doglob(y,z,x,m,eps,eps1,maxi,fixb,betaini,printd)
@@ -168,12 +152,12 @@ dotest = function(y_name,z_name=NULL,x_name=NULL,data,
   }
 
   cv_supF = matrix(0L,4,m)
-  for (c in 1:4){
+  for (sl in 1:4){
     #critical values for supF test
-    cv = getcv1(c,eps1)
-    cv_supF[c,] = cv[q,1:m,drop=FALSE]
+    cv = getcv1(sl,eps1)
+    cv_supF[sl,] = cv[q,1:m,drop=FALSE]
     if (printd==1){
-    print(paste('The critical values at the',siglev[c,1],'% level are (for k = 1 to',m,'):'))
+    print(paste('The critical values at the',siglev[sl,1],'% level are (for k = 1 to',m,'):'))
     print(cv[q,1:m,drop=FALSE])}
   }
 
@@ -182,24 +166,24 @@ dotest = function(y_name,z_name=NULL,x_name=NULL,data,
   #print('b) Dmax test against an unknown number of breaks')
   #print(paste('The UDmax test is:',max(ftest)))
   cv_Dmax = matrix(0L,4,1)
-  for (c in 1:4) {
+  for (sl in 1:4) {
     #critical values for Dmax test
-    cvm = getdmax(c,eps1)
-    cv_Dmax[c,1] = cvm[q,1]
+    cvm = getdmax(sl,eps1)
+    cv_Dmax[sl,1] = cvm[q,1]
     if(printd==1){
-    print(paste('The critical values at the',siglev[c,1],'% level is:',
+    print(paste('The critical values at the',siglev[sl,1],'% level is:',
                 cvm[q,1]))}
   }
 
 
-  for (c in 1:4){
+  for (sl in 1:4){
     #computation of WDmax test
-    cv = getcv1(c,eps1)
+    cv = getcv1(sl,eps1)
     for( i in 1:m){
       wftest[i,1] = cv[q,1] * ftest[i,1] / cv[q,i]
     }
     if (printd==1){
-    print(paste('WDmax test at the',siglev[c,1],'% level is:',max(wftest)))}
+    print(paste('WDmax test at the',siglev[sl,1],'% level is:',max(wftest)))}
   }
   rownames(cv_supF) = siglev
   rownames(cv_Dmax) = siglev
@@ -250,10 +234,7 @@ doseqtests = function(y_name,z_name=NULL,x_name=NULL,data,
                     m=5,eps=0.00001,eps1=0.15,maxi=10,fixb=0,betaini=0,printd=0,
                     prewhit=1,
                     robust=1,hetdat=1,hetvar=1,hetq=1,hetomega=1,const=1) {
-  if(eps1 <0.05 || eps1 >0.5){
-    warning('Invalid trimming level, set trimming level to 15%')
-    eps1 = 0.15
-  }
+  eps1 = check_trimming(eps1)
 
   siglev=matrix(c(10,5,2.5,1),4,1)
   df = process_data(y_name = y_name,z_name = z_name,x_name = x_name,data=data,const)
@@ -294,26 +275,26 @@ doseqtests = function(y_name,z_name=NULL,x_name=NULL,data,
     out = doglob(y,z,x,m,eps,eps1,maxi,fixb,betaini,printd)
     datevec = out$datevec
     bigvec = out$bigvec
-  supfl = matrix (0L,m-1,1)
-  ndat = matrix (0L,m-1,1)
+  supfl = matrix (0L,m,1)
+  ndat = matrix (0L,m,1)
   for (i in seq(1,m-1,1)){
     out1 = spflp1(bigvec,datevec[1:i,i,drop=FALSE],i+1,y,z,h,q,prewhit,robust,x,p,hetdat,hetvar)
-    supfl[i,1] = out1$maxf
-    ndat[i,1] = out1$newd
+    supfl[i+1,1] = out1$maxf
     #print(paste('The supF(',i+1,'|',i,') test is',supfl[i,1]))
     #print(paste('It corresponds to a new break at:',ndat[i,1]))
   }
-
+  supfl[1,1] = pftest(y,z,1,q,bigT,datevec,prewhit,robust,x,p,hetdat,hetvar)
   cv_supFl = matrix(0L,4,m)
 
   for (c in 1:4){
     cv = getcv2(c,eps1)
     cv_supFl[c,] = cv[q,1:m,drop=FALSE]
   }
+
   rownames(cv_supFl) = siglev
 
 
-  out = list('supfl' = supfl, 'ndat' = ndat, 'cv' = cv_supFl)
+  out = list('supfl' = supfl, 'cv' = cv_supFl)
   out$mbreak = m
   class(out) = 'seqtests'
   out = compile_seqtests(out)
@@ -348,38 +329,29 @@ doseqtests = function(y_name,z_name=NULL,x_name=NULL,data,
 
 doorder = function(y_name,z_name = NULL,x_name = NULL,data,
                    m=5,eps=0.00001,eps1=0.15,maxi=10,fixb=0,
-                   betaini=0,printd=0,bic_opt=1,const=1) {
-  #check trimming value
-  if(eps1 <0.05 || eps1 >0.5){
-    warning('Invalid trimming level, set trimming level to 15%')
-    eps1 = 0.15
-  }
+                   betaini=0,printd=0,opt='BIC',const=1) {
+
+  #need to use new checker's functions:
+  #check eps/check m/ check regressors for collinearity
+
+
 
   df = process_data(y_name = y_name,z_name = z_name,x_name = x_name,data=data,const)
   y = df$y
   z = df$z
   x = df$x
 
+
+  bigT = dim(y)[1]
+  #check trimming value
+  eps1 = check_trimming(eps1)
+  #check input number of breaks
+  m = check_m(bigT,eps1,m)
+  h = round(eps1*bigT)
+
   if (is.null(x)) {p = 0}
   else {p = dim(x)[2]}
-
   q = dim(z)[2]
-  bigT = dim(y)[1]
-  h = round(eps1*bigT)
-  #check m
-  upper_m = floor(bigT/h)-1
-  if(m>upper_m){
-    warning(paste('\nNot enough observations for',m+1,'segments with minimum length per segment =',
-              h,'.The total required observations for such',m,'breaks would be ',(m+1)*h,'>T=',bigT,'\n'))
-    message(paste('Set m to',upper_m,'\n'))
-    m=upper_m
-  }
-
-  if (m<=0){
-    warning('\nMaximum number of breaks cannot be less than 1\n')
-    message(paste('Set m to',upper_m,'\n'))
-    m=upper_m
-  }
   if (p == 0){zz = z}
   else{zz = cbind(z,x)}
   temp = doglob(y,z,x,m,eps,eps1,maxi,fixb,betaini,printd)
@@ -391,25 +363,49 @@ doorder = function(y_name,z_name = NULL,x_name = NULL,data,
   glob= matrix(0L, nrow = m+1, ncol=1)
   glob[1,1] = ssr0
   glob[seq(2,m+1),1] = glb
+  datevec = temp$datevec
 
   bic = matrix(0L,nrow = m+1, ncol = 1)
   lwz = matrix(0L,nrow = m+1, ncol = 1)
-
+  kt  = matrix(0L,nrow = m+1, ncol = 1)
   for (i in seq(1,m+1)){
+    #BIC criterion
     bic [i,1] = log(glob[i,1]/bigT) + log(bigT)*(i-1)*(q+1)/bigT
+    #LWZ criterion
     lwz[i,1] = log(glob[i,1]/(bigT-i*q-i+1)) +
       ((i-1)*(q+1)*c0*(log(bigT))^(2+delta0))/bigT
+    #Kurozumi and Tuvaandori (2011)
+    if (i==1){
+      bd=c(0,bigT)}
+    else{
+      bd=c(0,datevec[1:i-1,i-1],bigT)}
+   for (l in seq(1,i)){
+    segy   = y[seq(bd[l]+1,bd[l+1],1),,drop=FALSE];
+    segz   = z[seq(bd[l]+1,bd[l+1],1),,drop=FALSE];
+    segres = segy-segz%*%solve(t(segz)%*%segz)%*%t(segz)%*%segy;
+    dt     = bd[l+1]-bd[l];
+    kt[i,1]= kt[i,1]+(dt*log(t(segres)%*%segres/dt)+q*log(dt));
+    }
+
+    kt[i,1]    = kt[i,1]+2*i*log(bigT);
   }
 
   mBIC = which.min(bic) - 1
   mLWZ = which.min(lwz) - 1
+  mKT = which.min(kt) - 1
 
-  if (bic_opt == 1){
+
+  if (opt == 'BIC'){
     mSEL=mBIC
     p_name = 'BIC'
-  }else{
+  }else if(opt == 'LWZ') {
     mSEL=mLWZ
     p_name = 'LWZ'
+  }else if(opt == 'KT') {
+    mSEL=mKT
+    p_name='KT'
+  }else{
+    stop('No such criterion found. Please select either BIC, LWZ or KT')
   }
 
   if (mSEL == 0){
@@ -481,10 +477,6 @@ dosequa = function(y_name,z_name=NULL,x_name=NULL,data,
                    m=5,eps=0.00001,eps1=0.15,maxi=10,fixb=0,betaini=0,printd=0,
                    prewhit=1,robust=1,hetdat=1,hetvar=1,const=1,signif=2) {
 
-  if(eps1 <0.05 || eps1 >0.5){
-    warning('Invalid trimming level, set trimming level to 15%')
-    eps1 = 0.15
-  }
 
   df = process_data(y_name = y_name,z_name = z_name,x_name = x_name,data=data,const)
   y = df$y
@@ -496,21 +488,11 @@ dosequa = function(y_name,z_name=NULL,x_name=NULL,data,
 
   q = dim(z)[2]
   bigT = dim(y)[1]
+  #check trimming value
+  eps1 = check_trimming(eps1)
+  #check input number of breaks
+  m = check_m(bigT,eps1,m)
   h = round(eps1*bigT)
-  upper_m = floor(bigT/h)-1
-  if(m>upper_m){
-    warning(paste('\nNot enough observations for',m+1,'segments with minimum length per segment =',
-              h,'.The total required observations for such',m,'breaks would be ',(m+1)*h,'>T=',bigT,'\n'))
-    message(paste('Set m to',upper_m,'\n'))
-    m=upper_m
-  }
-
-  if (m<=0){
-    warning('\nMaximum number of breaks cannot be less than 1\n')
-    message(paste('Set m to',upper_m,'\n'))
-    m=upper_m
-  }
-
   nbreak = 0
   siglev=matrix(c(10,5,2.5,1),4,1)
 
@@ -620,30 +602,18 @@ dorepart = function(y_name,z_name = NULL,x_name = NULL,data,
 
   q = dim(z)[2]
   bigT = dim(y)[1]
+  #check trimming value
+  eps1 = check_trimming(eps1)
+  #check input number of breaks
+  m = check_m(bigT,eps1,m)
   h = round(eps1*bigT)
-
-  upper_m = floor(bigT/h)-1
-  if(m>upper_m){
-    warning(paste('\nNot enough observations for',m+1,'segments with minimum length per segment =',
-              h,'.The total required observations for such',m,'breaks would be ',(m+1)*h,'>T=',bigT,'\n'))
-    message(paste('Set m to',upper_m,'\n'))
-    m=upper_m
-  }
-  if (m<=0){
-    warning('\nMaximum number of breaks cannot be less than 1\n')
-    message(paste('Set m to',upper_m,'\n'))
-    m=upper_m
-  }
 
   reparv = matrix (0L,4,m)
   siglev=matrix(c(10,5,2.5,1),4,1)
 
-  nbreak = 0
 
-
-
-    temp = sequa(m,signif,q,h,bigT,robust,prewhit,z,y,x,p,hetdat,hetvar,eps1)
-    nbreak = temp$nbreak
+  temp = sequa(m,signif,q,h,bigT,robust,prewhit,z,y,x,p,hetdat,hetvar,eps1)
+  nbreak = temp$nbreak
     if (temp$nbreak == 0){
       message('\nThere are no breaks selected by sequential procedure and the repartition procedure is skipped.\n')
       out=list()
@@ -730,10 +700,7 @@ dofix = function(y_name,z_name = NULL,x_name=NULL,data,
                     fixn=5,eps=0.00001,eps1=0.15,maxi=10,fixb=0,betaini=0,printd=0,
                     prewhit=1,robust=1,hetdat=1,hetvar=1,hetq=1,hetomega=1,const=1){
 
-  if(eps1 <0.05 || eps1 >0.5){
-    warning('Invalid trimming level, set trimming level to 15%')
-    eps1 = 0.15
-  }
+
 
   if(fixn<0){
     warning('\nThe maximum number of breaks cannot be negative, set prespecified breaks = 2\n')
@@ -751,23 +718,13 @@ dofix = function(y_name,z_name = NULL,x_name=NULL,data,
 
   q = dim(z)[2]
   bigT = dim(y)[1]
+  #check trimming value
+  eps1 = check_trimming(eps1)
+  #check input number of breaks
+  fixn = check_m(bigT,eps1,fixn)
   h = round(eps1*bigT)
-
-  upper_m = floor(bigT/h)-1
-  if(fixn>upper_m){
-    warning(paste('\nNot enough observations for',fixn+1,'segments with minimum length per segment =',
-              h,'.The total required observations for such',fixn,'breaks would be ',(fixn+1)*h,'>T=',bigT,'\n'))
-    message(paste('Set m to',upper_m,'\n'))
-    fixn=upper_m
-  }
-  if (fixn<=0){
-    warning('\nMaximum number of breaks cannot be non-positive\n')
-    message(paste('Set m to',upper_m,'\n'))
-    fixn=upper_m
-  }
-
-t_out = doglob(y,z,x,fixn,eps,eps1,maxi,fixb,betaini,printd)
-datevec = t_out$datevec
+  t_out = doglob(y,z,x,fixn,eps,eps1,maxi,fixb,betaini,printd)
+  datevec = t_out$datevec
 if(length(datevec) == 0){
   message('\nThere are no breaks selected by the procedure\n')
   out = list()
@@ -858,7 +815,7 @@ compile_model = function (x,digits = -1,...){
     colnames(coef_tabRS) = cnameRS
 
 
-    #format regime-wise coefficients
+    #format full sample coefficients
     if(x$numx == 0){coef_tabRW = NULL}
     else{
       rnameRW = c()
@@ -866,7 +823,7 @@ compile_model = function (x,digits = -1,...){
         rnameRW = cbind(rnameRW,x$x_name[i])
       }
 
-    cnameRW = 'All regimes'
+    cnameRW = 'Full sample'
     coefRW = c()
     for (j in 1:x$numx){
       coefRW = cbind(coefRW,paste(format(round(x$beta[x$numz*(x$nbreak+1)+j,1],digits),nsmall=digits),
@@ -878,7 +835,7 @@ compile_model = function (x,digits = -1,...){
     colnames(coef_tabRW) = rnameRWf
     rownames(coef_tabRW) = cnameRW}
 
-    table = list('date_tab' = date_tab,'RS_tab' = coef_tabRS, 'RW_tab' = coef_tabRW)
+    table = list('date_tab' = date_tab,'RS_tab' = coef_tabRS, 'FS_tab' = coef_tabRW)
     x$tab = table
     return(x)
   }
@@ -988,8 +945,8 @@ print.sbtests <- function(x,...)
 
 compile_seqtests = function(x){
   if(x$mbreak==1){
-    message('\nThe test is exactly 0 versus 1 break, hence the sequential test is not repeated\n')
-    x$sfl = NULL
+    #message('\nThe test is exactly 0 versus 1 break, hence the sequential test is not repeated\n')
+    #x$sfl = NULL
     return(x)
   }else if (x$mbreak==0){
     warning('\nThe test is undefined for maximum break = 0\n')
@@ -997,24 +954,23 @@ compile_seqtests = function(x){
     return(x)
   }
   else{
-  nbreak = x$mbreak-1
+  nbreak = x$mbreak
   cnames = c()
-  for (i in 1:nbreak){
+  for (i in seq(0,nbreak-1)){
     cnames = cbind(cnames, paste('supF(',i+1,'|',i,')',sep=''))
   }
   temp_supfl = format(round(x$supfl,3),nsmall = 3)
-  temp_ndat = format(x$ndat,nsmall=0)
+  #temp_ndat = format(x$ndat,nsmall=0)
   temp_cv = format(round(x$cv,3),nsmall = 3)
 
   sfl =data.frame(supfl = t(temp_supfl[seq(1,nbreak,1),1,drop=FALSE]))
-  ndat = t(temp_ndat[seq(1,nbreak,1),1,drop=FALSE])
+  #ndat = t(temp_ndat[seq(1,nbreak,1),1,drop=FALSE])
   cv = temp_cv[,seq(1,nbreak,1),drop=FALSE]
-  colnames(ndat) = colnames(sfl)
+  #colnames(ndat) = colnames(sfl)
   colnames(cv) = colnames(sfl)
-  sfl = rbind(sfl,ndat)
   sfl = rbind(sfl,cv)
   colnames(sfl) = cnames
-  rownames(sfl) = c('Seq supF','Estimated date','10% CV','5% CV', '2.5% CV', '1% CV')
+  rownames(sfl) = c('Seq supF','10% CV','5% CV', '2.5% CV', '1% CV')
   x$sfl = sfl
   return (x)}
 }

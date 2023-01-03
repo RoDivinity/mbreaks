@@ -292,12 +292,11 @@ plambda = function(b,m,bigT) {
 psigmq = function (res,b,q,m,nt) {
 
   sigmat = matrix(0L, nrow = m+1, ncol = m+1)
-  resid_t = res[seq(1,b[1,1],1),1,drop=FALSE] #check this line if has problem
+  resid_t = res[seq(1,b[1,1],1),1,drop=FALSE]
   sigmat[1,1] = t(resid_t) %*% resid_t / b[1,1]
 
   kk = 2
   while (kk <= m) {
-    #check this loop for problem if errors
     bf = b[kk-1,1]
     bl = b[kk,1]
     resid_temp = res[seq(bf,bl,1),1]
@@ -559,7 +558,7 @@ process_data = function(y_name,z_name = NULL,x_name = NULL,data,const){
 
   if(is.na(y_ind)){
     stop('No matching dependent variable y. Please try again')
-    return(NULL)}
+    }
   else{
   y = data[,y_ind]
   y = data.matrix(y)
@@ -597,4 +596,40 @@ process_data = function(y_name,z_name = NULL,x_name = NULL,data,const){
   return(out)
 }
 
+#' function to check validity of maximum number of breaks before invoking procedures
+#' @param bigT sample size
+#' @param eps1 trimming level
+#' @param m input m
+#' @noRd
+check_m = function(bigT,eps1,m){
+  h = round(eps1*bigT)
+  upper_m = floor(bigT/h)-1
+  if(m>upper_m){
+    warning(paste('Not enough observations for',m+1,'segments with minimum length per segment =',
+                  h,'.The total required observations for such',m,'breaks would be ',(m+1)*h,'>T=',bigT,'\n'))
+    message(paste('Set m to',upper_m,'\n'))
+    m=upper_m
+  }
+
+  if (m<=0){
+    warning('Maximum number of breaks cannot be less than 1')
+    message(paste('Set m to',upper_m,'\n'))
+    m=upper_m
+  }
+  return(m)
+}
+
+#' function to check validity of maximum number of breaks before invoking procedures
+#' @param bigT sample size
+#' @param eps1 trimming level
+#' @param m input m
+#' @noRd
+
+check_trimming = function(eps1){
+  v_eps1 = c(0.05,0.10,0.15,0.20,0.25)
+if(!eps1 %in% v_eps1){
+  warning('Invalid trimming level, set trimming level to 15%. Only allowed for 5%,10%,15%,20% and 25%')
+  eps1 = 0.15
+}
+  return(eps1)}
 

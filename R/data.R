@@ -1,32 +1,34 @@
 #' World Health Organization TB data
 #'
-#' A subset of data from the World Health Organization Global Tuberculosis
-#' Report ...
+#' Data set from the Garcia and Perron study's of ex-post exchange rate.
 #'
 #' @format ## `real`
-#' A data frame with 7,240 rows and 60 columns:
+#' A data frame with 103 rows and 1 column:
 #' \describe{
-#'   \item{country}{Country name}
-#'   \item{iso2, iso3}{2 & 3 letter ISO country codes}
-#'   \item{year}{Year}
-#'   ...
+#'   \item{rate}{Real exchange rate}
 #' }
-#' @source <https://www.who.int/teams/global-tuberculosis-programme/data>
+#' @source Garcia, R. and Perron, P., 1996. "An analysis of the real interest rate under regime shifts." Review of Economics and Statistics 111–125.
 "real"
 
 #' New Keynesian Phillips curve data
 #'
-#' A subset of data from the World Health Organization Global Tuberculosis
-#' Report ...
+#' Data set from inflation and other macroeconomic variables
 #'
 #' @format ## `nkpc`
-#' A data frame with 7,240 rows and 60 columns:
+#' A data frame with 151 rows and 12 columns:
 #' \describe{
+#'   \item{year}{Current period year}
+#'   \item{quarter}{Quarter in current period year}
 #'   \item{inf}{Inflation rate}
-#'   \item{inffut}{Expected inflation rate, take value of inflation rate of next period}
-#'   \item{year}{Year}
-#'   ...
+#'   \item{inflag}{Inflation rate in previous period}
+#'   \item{inffut}{Expected inflation rate, taken as value of inflation rate of next period}
+#'   \item{ygap}{Productivity output gap}
+#'   \item{lbs}{}
+#'   \item{lbslag}{}
+#'   \item{spreadlag}{}
+#'   \item{dwlag}{}
+#'   \item{dcplag}{}
 #' }
-#' @source <https://www.who.int/teams/global-tuberculosis-programme/data>
+#' @source Perron, P. and Yamamoto, Y., 2015. "Using ols to estimate and test for structural changes in models with endogenous regressors." Journal of Applied Econometrics 30, 119–144.
 "nkpc"
 

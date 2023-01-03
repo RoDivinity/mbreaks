@@ -31,7 +31,7 @@
 
 estim = function(m,q,z,y,b,robust,prewhit,hetomega,hetq,x,p,hetdat,hetvar){
   if (m == 0){
-    print('There are no breaks in this model and estimation is skipped')
+    warning('There are no breaks in this model and estimation is skipped')
     return (NULL)}
   else{
     bigT = dim(z)[1]
@@ -62,7 +62,7 @@ estim = function(m,q,z,y,b,robust,prewhit,hetomega,hetq,x,p,hetdat,hetvar){
     }
 
     if (robust == 0 && hetdat == 1 && hetvar == 0){
-      #print('In this case robust=0, hetdat=1 and hetvar=0, the "corrected" are the same as that of the printout except for a different small sample correction.')
+      warning('In this case robust=0, hetdat=1 and hetvar=0, the "corrected" are the same as that of the printout except for a different small sample correction.')
       SE[i,1] = sqrt(vdel[i,i])
     }
 
@@ -383,7 +383,6 @@ nldat = function(y,z,x,h,m,p,q,bigT,fixb,eps,maxi,betaini,printd){
     }
 
     #start the iterations
-
     length = 999999999999
     i = 1
 
@@ -435,7 +434,6 @@ nldat = function(y,z,x,h,m,p,q,bigT,fixb,eps,maxi,betaini,printd){
 
 #' sequential procedure to obtain number of breaks and break dates
 #' @references
-
 sequa = function(m,signif,q,h,bigT,robust,prewhit,z,y,x,p,hetdat,hetvar,eps1){
 
   dv = matrix(0L, nrow = m+2, ncol = 1)

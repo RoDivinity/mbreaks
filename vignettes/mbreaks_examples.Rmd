@@ -35,7 +35,7 @@ where $\underset{(p \times 1)}{x_t}$ is vector of regressors with coefficients u
 - Selecting number of breaks:
   + Information criterion:
     * Bayesian Information Criterion (BIC): `doorder()` (cite)
-    * Modified Schwarz Criterion (MSIC): `doorder()` (cite)
+    * Modified Schwarz Criterion (LWZ): `doorder()` (cite)
   + Sequential estimation:
     * Selecting number of breaks using $\sup F_T(l+1|l)$ test: `dosequa()` (cite)
     * Estimating one break at a time: `dorepart()` (cite)
@@ -58,7 +58,7 @@ The `mbreaks` package designs high-level functions to have identical arguments w
 #load US ex-post exchange rate data 
 USrate = data(real)
 #carry out all testing and estimating procedures via a single call
-rate = mdl('y',data=real)
+rate = mdl('rate',data=real)
 #display the results from the procedures
 rate
 ```
@@ -103,7 +103,7 @@ which is equivalent to a pure mean-shift model. We allow for heteroskedastic and
 
 ```{r, graph_USr, fig.width=7}
 #estimating the mean-shift model with BIC (the default option bic_opt=1, which use BIC as criterion)
-rate_BIC = doorder('y',data=real)
+rate_BIC = doorder('rate',data=real)
 #NOTE: equivalent to rate$BIC; type rate$BIC to compare with new result
 
 
