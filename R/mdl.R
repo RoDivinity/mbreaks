@@ -185,9 +185,9 @@ print.mdl <- function(x,...)
   digits = max(3L, getOption("digits") - 3L)
   cat(paste('Number of max breaks specified: ',x$maxb),'\n')
   cat('-----------------------------------------------------')
-  if (is.null(x$BIC)) {cat('\nNo breaks were founded\n')}
+  if (is.null(x$KT)) {cat('\nNo breaks were founded by KT\n')}
   else{
-  print(x$BIC)}
+  print(x$KT)}
   cat('-----------------------------------------------------')
   print(x$sbtests)
   cat('-----------------------------------------------------')
