@@ -409,7 +409,7 @@ doorder = function(y_name,z_name = NULL,x_name = NULL,data,
   }
 
   if (mSEL == 0){
-    message('\nThere are no breaks selected by ',p_name,'and estimation is skipped\n')
+    message('\nThere are no breaks selected by ',p_name,' and estimation is skipped\n')
     out = list()
     out$p_name = p_name
     out$nbreak = mSEL
@@ -827,7 +827,7 @@ compile_model = function (x,digits = -1,...){
     coefRW = c()
     for (j in 1:x$numx){
       coefRW = cbind(coefRW,paste(format(round(x$beta[x$numz*(x$nbreak+1)+j,1],digits),nsmall=digits),
-                                  paste('(',format(round(x$SE[x$numz*x$nbreak+j,1],digits),nsmall=digits),')',sep='')))}
+                                  paste('(',format(round(x$SE[x$numz*(x$nbreak+1)+j,1],digits),nsmall=digits),')',sep='')))}
 
     rnameRWf = paste(rnameRW,'(SE)',sep=' ')
 
@@ -877,7 +877,7 @@ print.model <- function(x,...)
   if(x$numx == 0) {cat('\nNo full sample regressors\n')}
   else{
     cat('\nEstimated full-sample coefficients:\n\n')
-    print(x$tab$RW_tab,quote='FALSE')}}
+    print(x$tab$FS_tab,quote='FALSE')}}
 
 
   invisible(x)
