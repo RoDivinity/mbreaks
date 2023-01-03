@@ -7,23 +7,29 @@
 \format{
 \subsection{\code{nkpc}}{
 
-A data frame with 7,240 rows and 60 columns:
+A data frame with 151 rows and 12 columns:
 \describe{
+\item{year}{Current period year}
+\item{quarter}{Quarter in current period year}
 \item{inf}{Inflation rate}
-\item{inffut}{Expected inflation rate, take value of inflation rate of next period}
-\item{year}{Year}
-...
+\item{inflag}{Inflation rate in previous period}
+\item{inffut}{Expected inflation rate, taken as value of inflation rate of next period}
+\item{ygap}{Productivity output gap}
+\item{lbs}{}
+\item{lbslag}{}
+\item{spreadlag}{}
+\item{dwlag}{}
+\item{dcplag}{}
 }
 }
 }
 \source{
-\url{https://www.who.int/teams/global-tuberculosis-programme/data}
+Perron, P. and Yamamoto, Y., 2015. "Using ols to estimate and test for structural changes in models with endogenous regressors." Journal of Applied Econometrics 30, 119–144.
 }
 \usage{
 nkpc
 }
 \description{
-A subset of data from the World Health Organization Global Tuberculosis
-Report ...
+Data set from inflation and other macroeconomic variables
 }
 \keyword{datasets}

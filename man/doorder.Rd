@@ -16,7 +16,7 @@ doorder(
   fixb = 0,
   betaini = 0,
   printd = 0,
-  bic_opt = 1,
+  opt = "BIC",
   const = 1
 )
 }
@@ -53,7 +53,4 @@ A list that contains following:
 \description{
 The function carry out the procedure to estimate order
 using BIC and the criterion of Liu, Wu and Zidek
-}
-\references{
-
 }

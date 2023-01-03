@@ -41,6 +41,3 @@ It also computes and reports confidence intervals for the break dates and
 corrected standard errors of coefficients estimates given specifications of
 errors covariance matrix via robust, hetomega, hetq, hetdat and hetvar
 }
-\references{
-
-}

@@ -9,6 +9,3 @@ sequa(m, signif, q, h, bigT, robust, prewhit, z, y, x, p, hetdat, hetvar, eps1)
 \description{
 sequential procedure to obtain number of breaks and break dates
 }
-\references{
-
-}

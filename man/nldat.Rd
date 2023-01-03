@@ -42,6 +42,3 @@ recursive computations of SSR and finding the m optimal global minimizers. The i
 to pure structural break case, with iteration to convergence to solve 2 sets
 of parameters.
 }
-\references{
-
-}

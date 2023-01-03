@@ -97,6 +97,7 @@ A list that contains the following:
 \item{spflp1: Sequential Sup F test of l versus l+1 breaks }
 \item{BIC: Estimated number of breaks by BIC and the corresponding model}
 \item{LWZ: Estimated number of breaks by LWZ and the corresponding model}
+\item{KT: Estimated number of breaks by KT and the corresponding model}
 \item{sequa: Estimated number of breaks by sequential procedure the corresponding model}
 \item{repart: Estimated number of breaks by repartition procedure the corresponding model}
 \item{fix: Estimated model with pre-specified number of breaks}
@@ -113,7 +114,7 @@ The 7 main procedures include:
 Double Max test.}
 \item{\code{\link{doseqtests}}: Procedure to conduct sequential SupF(l+1|l) (l versus l+1 breaks)}
 \item{\code{\link{doorder}}: Procedure to find number of break by criteria selection
-(including BIC and LWZ criterion)}
+(including BIC, LWZ and KT criterion)}
 \item{\code{\link{dosequa}}: Procedure to find number of break and break dates via sequential method}
 \item{\code{\link{dorepart}}: Procedure to find number of break and break dates via repartition method}
 \item{\code{fix}: Procedure to find number of break by pre-specified number of breaks, which are set at \code{default}

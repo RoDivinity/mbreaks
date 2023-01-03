@@ -7,23 +7,19 @@
 \format{
 \subsection{\code{real}}{
 
-A data frame with 7,240 rows and 60 columns:
+A data frame with 103 rows and 1 column:
 \describe{
-\item{country}{Country name}
-\item{iso2, iso3}{2 & 3 letter ISO country codes}
-\item{year}{Year}
-...
+\item{rate}{Real exchange rate}
 }
 }
 }
 \source{
-\url{https://www.who.int/teams/global-tuberculosis-programme/data}
+Garcia, R. and Perron, P., 1996. "An analysis of the real interest rate under regime shifts." Review of Economics and Statistics 111–125.
 }
 \usage{
 real
 }
 \description{
-A subset of data from the World Health Organization Global Tuberculosis
-Report ...
+Data set from the Garcia and Perron study's of ex-post exchange rate.
 }
 \keyword{datasets}

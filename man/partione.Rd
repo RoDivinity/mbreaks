@@ -28,6 +28,3 @@ starts at date start and ends at date last. It returns the optimal break
 and the associated SSR. Procedure used with the sequential method when
 the T*(T+1)/2 vector of SSR is not computed.
 }
-\references{
-
-}

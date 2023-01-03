@@ -27,6 +27,3 @@ Function calculates the optimal one break partition for a segment starting
 from start to last. The possible range of the break is within
 \eqn{[b_{last},b_{end}]} based on the vector of recursive SSR of the model
 }
-\references{
-
-}
