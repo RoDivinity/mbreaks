@@ -403,7 +403,7 @@ doorder = function(y_name,z_name = NULL,x_name = NULL,data,
     p_name = 'LWZ'
   }else if(opt == 'KT') {
     mSEL=mKT
-    p_name='KT'
+    p_name = 'KT'
   }else{
     stop('No such criterion found. Please select either BIC, LWZ or KT')
   }
@@ -851,6 +851,7 @@ print.model <- function(x,...)
 {
   #print procedure used to select number of breaks
   proc = switch(x$p_name,'dosequa'='sequential procedure', 'BIC' = 'BIC', 'LWZ' = 'LWZ',
+                'KT'='KT',
                 'dorepart' = 'repartition procedure', 'fix' = 'specified number of breaks')
   digits = max(3L, getOption("digits") - 3L)
 
