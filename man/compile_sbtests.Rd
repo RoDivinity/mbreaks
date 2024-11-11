@@ -2,10 +2,25 @@
 % Please edit documentation in R/Procedures.R
 \name{compile_sbtests}
 \alias{compile_sbtests}
-\title{Summary output of Sup Wald test}
+\title{Compile the Output of Sup Wald Test}
 \usage{
-compile_sbtests(x, digits = -1, ...)
+compile_sbtests(x, digits = 3)
+}
+\arguments{
+\item{x}{An `sbtests` class object.}
+
+\item{digits}{The number of decimal places displayed.}
+}
+\value{
+A modified `sbtests` object, `x`, with two appended data frames:
+\describe{
+  \item{supF1}{A data frame containing SupF test statistics for testing 0 versus m breaks,
+    where m is the maximum number of breaks considered in `x`. It includes critical values
+    at the \emph{10\%, 5\%, 2.5\%, and 1\%} levels.}
+  \item{UDMax}{A data frame containing Double Max test statistics with critical values
+    at the \emph{10\%, 5\%, 2.5\%, and 1\%} levels.}
+}
 }
 \description{
-Function to format the output of the Sup F test
+`compile_sbtests` formats the output of `sbtests` into two tables.
 }

@@ -2,7 +2,7 @@
 % Please edit documentation in R/mdl.R
 \name{mdl}
 \alias{mdl}
-\title{Robust structural change estimation}
+\title{Comprehensive structural change estimation and testing}
 \usage{
 mdl(
   y_name,
@@ -10,7 +10,7 @@ mdl(
   x_name = NULL,
   data,
   eps1 = 0.15,
-  m = -1,
+  m = 5,
   prewhit = 1,
   robust = 1,
   hetdat = 1,
@@ -20,42 +20,48 @@ mdl(
   maxi = 10,
   eps = 1e-05,
   fixn = -1,
+  fixb = 0,
+  betaini = 0,
   printd = 0,
   const = 1,
-  signif = 2
+  signif = 2,
+  h = NULL
 )
 }
 \arguments{
-\item{y_name}{name of dependent variable in the data set}
+\item{y_name}{name of dependent variable in the data set.}
 
 \item{z_name}{name of independent variables in the data set which coefficients are allowed to change
-across regimes. \code{default} is vector of 1 (Mean-shift model)}
+across regimes. \code{default} is vector of 1 (Mean-shift model).}
 
 \item{x_name}{name of independent variables in the data set which coefficients are constant across
-regimes. \code{default} is NULL}
+regimes. \code{default} is \code{NULL}.}
 
-\item{data}{the data set for estimation}
+\item{data}{the data set for estimation.}
 
 \item{eps1}{value of trimming (in percentage) for the construction
-and critical values. Minimal segment length will be set
+and critical values. Minimal segment length `h` will be set
 at \code{default} = int(\code{eps1}*T) (T is total sample size).
 \itemize{
-\item{\code{eps1}=.05: Maximal value of \code{m} = 10}
-\item{\code{eps1}=.10: Maximal value of \code{m} = 8}
-\item{\code{eps1}=.15: Maximal value of \code{m} = 5}
-\item{\code{eps1}=.20: Maximal value of \code{m} = 3}
-\item{\code{eps1}=.25: Maximal value of \code{m} = 2}
-} The \code{default} value is set at 0.15}
+  \item \code{eps1 = 0.05} Maximal value of \code{m} = 10.
+  \item \code{eps1 = 0.10} Maximal value of \code{m} = 8.
+  \item \code{eps1 = 0.15} Maximal value of \code{m} = 5.
+  \item \code{eps1 = 0.20} Maximal value of \code{m} = 3.
+  \item \code{eps1 = 0.25} Maximal value of \code{m} = 2.
+  \item \code{eps1 = 0} This option allows users to explicitly specify
+minimum segment length `h` parameters. However, this option will not
+be allowed for testing and testing related functions.}
+The default value is set at \code{eps1 = 0.15}.}
 
 \item{m}{Maximum number of structural changes allowed. If not specify,
-m will be set to \code{default} value from \code{eps1}}
+m will be set to \code{default} value matching `eps1` input.}
 
-\item{prewhit}{set to \code{1} if want to apply AR(1) prewhitening prior to estimating
+\item{prewhit}{set to \code{1} to apply AR(1) prewhitening prior to estimating
 the long run covariance matrix.}
 
-\item{robust}{set to \code{1} if want to allow for heterogeneity
+\item{robust}{set to \code{1} to allow for heterogeneity
 and autocorrelation in the residuals, \code{0} otherwise.
-The method used is \emph{Andrews(1991)} automatic bandwidth with AR(1) approximation and the quadratic
+The method used is Andrews(1991) automatic bandwidth with AR(1) approximation with quadratic
 kernel. Note: Do not set to \code{1} if lagged dependent variables are
 included as regressors.}
 
@@ -72,57 +78,79 @@ across segments and constructed from the full sample. \code{hetvar}=\code{1} whe
 
 \item{hetomega}{used in the construction of the confidence intervals for the break
 dates. If \code{hetomega}=\code{0}, the long run covariance matrix of zu is
-assumed identical across segments
-(the variance of the errors u if \code{robust}={0})}
+assumed identical across segments (the variance of the errors u if \code{robust}=\code{0})}
 
 \item{hetq}{used in the construction of the confidence intervals for the break
 dates. If \code{hetq}=\code{0}, the moment matrix of the data is assumed identical
 across segments}
 
 \item{maxi}{number of maximum iterations for recursive calculations of finding
-global minimizers.\code{default} = 10}
+global minimizers.\code{default} = 10 (For partial change model ONLY).}
 
-\item{eps}{convergence criterion for recursive calculations}
+\item{eps}{convergence criterion for recursive calculations (For partial change model ONLY)}
 
 \item{fixn}{number of pre-specified breaks. \code{default} = -1. It will be replaced
-automatically to 2 if no specification is given}
+automatically to 2 if no specification is given (For partial change model ONLY)}
+
+\item{fixb}{option to use fixed initial input \eqn{\beta}. If \code{1},
+the model will use values given in \code{betaini}. If \code{0}, betaini is skipped}
+
+\item{betaini}{Initial \eqn{\beta_0} to use in estimation (Must be a `p x 1` matrix, where `p` is number of x variables)}
 
 \item{printd}{Print option for model estimation. \code{default} = 0, to
 suppress intermediate outputs printing to console}
+
+\item{const}{indicates whether the regression model include an
+intercept changing across regimes. Default value is 1.}
+
+\item{signif}{significance level used to sequential test to select number of breaks.
+\itemize{
+  \item 4: 1\% level
+  \item 3: 2.5\% level
+  \item 2: 5\% level
+  \item 1: 10\% level
+}}
+
+\item{h}{Minimum segment length of regime considered in estimation. If users want to specify a particular value, please set `eps1=0`}
 }
 \value{
 A list that contains the following:
-\itemize{
-\item{Wtest: Sup F tests of 0 versus m breaks and Double Max tests}
-\item{spflp1: Sequential Sup F test of l versus l+1 breaks }
-\item{BIC: Estimated number of breaks by BIC and the corresponding model}
-\item{LWZ: Estimated number of breaks by LWZ and the corresponding model}
-\item{KT: Estimated number of breaks by KT and the corresponding model}
-\item{sequa: Estimated number of breaks by sequential procedure the corresponding model}
-\item{repart: Estimated number of breaks by repartition procedure the corresponding model}
-\item{fix: Estimated model with pre-specified number of breaks}
+\describe{
+\item{sbtests}{A list of class `sbtests` representing Sup F tests of 0 versus m breaks and Double Max tests.}
+\item{seqtests}{A list of class `seqtests` representing sequential Sup F test of l versus l+1 breaks.}
+\item{BIC}{A list of class `model` with structural break model estimated by number of breaks by \code{BIC} criterion.}
+\item{LWZ}{A list of class `model` with structural break model estimated by number of breaks by \code{LWZ} criterion.}
+\item{KT}{A class `model` with structural break model estimated by number of breaks by \code{KT} criterion.}
+\item{sequa}{A class `model` with structural break model estimated by number of breaks by sequential tests.}
+\item{fix}{A class `model` with structural break model estimated by pre-specified `fixn` number of breaks.}
 }
+
+Note: All \code{default} values of error assumptions (\code{robust},
+\code{hetdat}, \code{hetvar}, \code{hetq}) are set to 1. The implications on
+the structure of model\'s errors related to individual settings are explained within
+the arguments section for each option.
 }
 \description{
-Function executes all the main procedures to estimate either i) pure structural
+`mdl()` calls main functions of the `mbreaks` package to execute the following
+estimation procedures:
+\describe{
+\item{`dotest()`}{ Function \code{\link{dotest}} conducts Sup F tests of `0` versus `m` breaks and Double Max tests.}
+\item{`doseqtests()`}{Function \code{\link{doseqtests}} conducts the sequential Sup F tests of `l` versus `l+1` breaks.}
+\item{`doorder()`}{Function \code{\link{doorder}} conducts the number of breaks selection from `1` to `m`
+ breaks using the following information critera: \code{KT},\code{BIC}, and \code{LWZ}.}
+\item{`dosequa()`}{Function \code{\link{dosequa}} conducts the number of breaks selection by sequential tests
+ from `1` to `m` breaks using sequential Sup F tests.}
+\item{`dofix()`}{Function \code{\link{dofix}} conducts structural break model estimation with `fixn` breaks.}
+}
+All the procedures automatically identify if the `model` is either i) pure structural
 breaks model or ii) partial structural breaks model
 }
-\details{
-The 7 main procedures include:
-\itemize{
-\item{\code{\link{dotest}}: Procedure to conduct SupF test of 0 versus m breaks and
-Double Max test.}
-\item{\code{\link{doseqtests}}: Procedure to conduct sequential SupF(l+1|l) (l versus l+1 breaks)}
-\item{\code{\link{doorder}}: Procedure to find number of break by criteria selection
-(including BIC, LWZ and KT criterion)}
-\item{\code{\link{dosequa}}: Procedure to find number of break and break dates via sequential method}
-\item{\code{\link{dorepart}}: Procedure to find number of break and break dates via repartition method}
-\item{\code{fix}: Procedure to find number of break by pre-specified number of breaks, which are set at \code{default}
-to be 2 }}
+\examples{
+ US_rate = mdl('rate',data=real)
+ nkpc_lbs = mdl('inf',c('inflag','lbs','inffut'),data=nkpc,prewhit = 0)
 
-All \code{default} values of error assumptions (\code{robust},
-\code{hetdat}, \code{hetvar}, \code{hetq}) will be set to 1. The implications on
-the structure of model's errors related to individual settings are explained within
-the arguments section for each option. Users can separately invoke only one at a
-time one of the main7 procedures mentioned above
+}
+\seealso{
+\code{\link{dotest}}, \code{\link{doseqtests}}, \code{\link{doorder}}, \code{\link{dosequa}}, and \code{\link{dofix}}
+which are functions called by `mdl()`.
 }

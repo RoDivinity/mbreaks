@@ -1,40 +1,45 @@
 ### Main procedures
 
-#' Global SSR minimizers procedure
+#' Global SSR minimizer for structural change model
 #'
-#' A helper function to identify if the estimated break model is i) pure change or ii)
-#' partial change model. The procedure then calls appropriate functions \link{} to estimate
-#' the pure change model and \link{} to estimate the partial change model. This helper function
-#' is required for supF, UDMax, WDMax and supF(l+1|l) test functions invoked via \link{}
+#'`doglob()` identify if the structural change model is i) pure or ii)
+#' partial change model. The procedure then calls appropriate functions \code{\link[mbreaks]{dating}} to estimate
+#' the pure change model and \code{\link[mbreaks]{nldat}} to estimate the partial change model.
 #'
-#'@aliases doglob
-#'@param y_name dependent variables in matrix form
-#'@param z_name matrix of independent variables with coefficients are allowed to change across
+#'@param y matrix of dependent variable
+#'@param z matrix of independent variables with coefficients allowed to change across
 #'regimes
-#'@param x_name  matrix of independent variables with coefficients constant across regimes
+#'@param x matrix of independent variables with coefficients constant across regimes
+#'@param m number of breaks in the structural change model
+#'@param h Minimum segment length of regime considered in estimation. If users want to specify a particular value, please set `eps1=0`
+#'@param eps convergence criterion for iterative recursive computation. (For partial change model ONLY)
 #'@param eps1 trimming level
-#'@param eps convergence criterion for iterative recursive computation
-#'@param maxi maximum number of iterations
+#'@param maxi maximum number of iterations. (For partial change model ONLY)
 #'@param fixb option to use fixed initial input \eqn{\beta}. If \code{1},
 #'the model will use values given in \code{betaini}. If \code{0}, betaini is skipped
-#'@param betaini Initial \eqn{beta_0} to use in estimation
-#'@param printd option to print results of iterations for partial change model
+#'@param betaini Initial \eqn{beta_0} to use in estimation (Must be a `p x 1` matrix, where p is number of x variables)
+#'@param printd  Print option for model estimation. \code{default} = 0, to
+#' suppress intermediate outputs printing to console
 #'@return A list containing the following components:
-#'\itemize{
-#'\item{glb} {Minimum global SSR}
-#'\item{datevec} {Vector of dates (optimal minimizers)}
-#'\item{bigvec} {Associated SSRs with possible break dates combination}}
+#'\describe{
+#'\item{glb}{Minimum global SSR.}
+#'\item{datevec}{Vector of dates (optimal minimizers).}
+#'\item{bigvec}{Associated SSRs with possible break dates combination.}
+#'}
 #'@export
-#'
-doglob = function (y,z,x,m,eps,eps1,maxi,fixb,betaini,printd){
+
+doglob = function (y,z,x,m,eps,h,maxi,fixb,betaini,printd,eps1){
 
 #check if model is pure or partial change
 if (is.null(x)) {p = 0}
 else {p = dim(x)[2]}
-
 q = dim(z)[2]
 bigT = dim(y)[1]
-h = round(eps1*bigT)
+
+#check user specifications
+conditions = check_trimming(bigT,eps1,m,h,p,q)
+h=conditions$h
+m=conditions$m
 
 
 if(p == 0) {
@@ -50,7 +55,9 @@ else{
   cat(paste(q,'regressors z with allowed to change coefficients\n'))
   cat(paste(p,'regressors x with fixed coefficients\n'))
   cat(paste('maximum number of breaks:',m),'\n')
-  if(fixb == 1) {cat('initial regime-wise coefficients: \n')
+  if(fixb == 1) {
+    check_beta0(betaini,p)
+    cat('initial regime-wise coefficients: \n')
     cat(betaini)}
   cat(paste('convergence criterion:',eps),'\n')
   cat(paste('print iteration option (1)=TRUE/(0)=FALSE',printd),'\n')}
@@ -72,71 +79,97 @@ for (i in 1:m){
 
 #' SupF, UDMax & WDMax testing procedure
 #'
-#' @description
-#' The procedure calculate the test statistics and print results of the 2 main tests:
+#' `dotest()` compute the test statistics and report the critical values of
+#' the 2 main supF tests below:
 #' \itemize{
-#' \item{SupF test} {F test of 0 vs m breaks}
-#' \item{Double Max test} {UDMax: the unweighted version
-#' and WDMax: the weighted version}
+#' \item SupF test of 0 vs m breaks
+#' \item Double Max test proposed by Perron and Bai, 1998
 #'}
 #'
-#'@param y_name name of dependent variable in the data set
-#'@param z_name name of independent variables in the data set which coefficients are allowed to change
-#'across regimes. \code{default} is vector of 1 (Mean-shift model)
-#'@param x_name name of independent variables in the data set which coefficients are constant across
-#' regimes. \code{default} is NULL
+#'@param y_name matrix of dependent variable
+#'@param z_name matrix of regressors which coefficients are allowed to change
+#'across regimes.
+#'@param x_name matrix of regressors which coefficients are constant across
+#' regimes.
 #'@param data the data set for estimation
 #'@param m maximum number of breaks
+#'@param const indicates whether the regression model include an
+#'intercept changing across regimes. Default value is 1
 #'@param eps1 trimming level
 #'@param eps convergence criterion for iterative recursive computation
 #'@param maxi maximum number of iterations
 #'@param fixb option to use fixed initial input \eqn{\beta}. If \code{1},
 #'the model will use values given in \code{betaini}. If \code{0}, betaini is skipped
-#'@param betaini Initial \eqn{beta_0} to use in estimation
-#'@param printd option to print results of iterations for partial change model
+#'@param betaini Initial \eqn{beta_0} to use in estimation (Must be a `p x 1` matrix, where p is number of x variables)
+#'@param printd  Print option for model estimation. \code{default} = 0, to
+#' suppress intermediate outputs printing to console
 #'@param prewhit option to use AR(1) for prewhitening
-#'@param robust,hetdat,hetvar options on error terms assumptions
+#'@param robust set to \code{1} to allow for heterogeneity
+#' and autocorrelation in the residuals, \code{0} otherwise.
+#' The method used is \emph{Andrews(1991)} automatic bandwidth with AR(1) approximation with quadratic
+#' kernel. Note: Do not set to \code{1} if lagged dependent variables are
+#' included as regressors.
+#' @param hetdat option for the construction of the F tests. Set to 1 if want to
+#' allow different moment matrices of the regressors across segments.
+#' If \code{hetdat} = \code{0}, the same moment matrices are assumed for each segment
+#' and estimated from the ful sample. It is recommended to set
+#' \code{hetdat}=\code{1} if number of regressors \code{x} > \code{0}.
+#' @param hetvar option for the construction of the F tests.Set to \code{1}
+#' if users want to allow for the variance of the residuals to be different across segments.
+#' If \code{hetvar}=\code{0}, the variance of the residuals is assumed constant
+#' across segments and constructed from the full sample. \code{hetvar}=\code{1} when \code{robust} =\code{1})
+#' @param hetomega used in the construction of the confidence intervals for the break
+#' dates. If \code{hetomega}=\code{0}, the long run covariance matrix of zu is
+#' assumed identical across segments
+#' (the variance of the errors u if \code{robust}=\code{0})
+#' @param hetq used in the construction of the confidence intervals for the break
+#' dates. If \code{hetq}=\code{0}, the moment matrix of the data is assumed identical
+#' across segments
+#' @param printd Print option for model estimation. \code{default} = 0, to
+#' suppress intermediate outputs printing to console
 #'@return A list that contains following:
-#'\itemize{
-#'\item{ftest: SupF test of 0 vs m (1 to maximum) breaks statistics}
-#'\item{cv_supF: Critical values for Sup F test }
-#'\item{cv_Dmax: Critical values for Double Max test}
-#'\item{supF1: table summarizing the SupF test (for viewing purposes)}
-#'\item{UDMax: table summarizing the Double Max test (including UDMax statistics and CVs)}
+#'\describe{
+#'\item{ftest}{SupF test of 0 vs m (1 to maximum) breaks statistics}
+#'\item{cv_supF}{Critical values for Sup F test }
+#'\item{cv_Dmax}{Critical values for Double Max test}
+#'\item{supF1}{table summarizing the SupF test (for viewing purposes)}
+#'\item{UDMax}{table summarizing the Double Max test (including UDMax statistics and CVs)}
 #'}
 #'@export
-
 
 dotest = function(y_name,z_name=NULL,x_name=NULL,data,
                   m=5,eps=0.00001,eps1=0.15,maxi=10,fixb=0,betaini=0,printd=0,prewhit=1,robust=1,
                   hetdat=1,hetvar=1,hetq=1,hetomega=1,const=1){
-  eps1=check_trimming(eps1)
   siglev=matrix(c(10,5,2.5,1),4,1)
   df = process_data(y_name = y_name,z_name = z_name,x_name = x_name,data=data,const)
   y = df$y
   z = df$z
   x = df$x
+  p = df$p
+  q = df$q
+  y_name = df$y_name
+  z_name = df$z_name
+  x_name = df$x_name
 
 
-  if(m==0){
-    warning('The test is undefined for no breaks model')
-    out = list()
-    out$mbreak = 0;
-    class(out) = 'sbtests'
-    return(out)
-  }else{
+  if(eps1 == 0){ stop('The tests are undefined for 0% trimming level')}
+  bigT = dim(y)[1]
+  h = floor(eps1*bigT)
+  #check user specifications
+  conditions = check_trimming(bigT,eps1,m,h,p,q)
 
-    if (is.null(x)) {p = 0}
-    else {p = dim(x)[2]}
+  h=conditions$h
+  eps1=conditions$eps1
+  m=conditions$m
 
-    q = dim(z)[2]
-    bigT = dim(y)[1]
-    h = round(eps1*bigT)
+  #check for collinearity/duplication of regressors
+  check_duplicate(z,x,z_name,x_name)
+  v_eps1 = c(0.05,0.10,0.15,0.20,0.25)
+  if(!eps1 %in% v_eps1){
+    stop('No matching trimming level available for testing')
+  }
 
-    m = check_m(bigT,eps1,m)
-
-
-  out = doglob(y,z,x,m,eps,eps1,maxi,fixb,betaini,printd)
+  out = doglob(y,z,x,m,eps,h,maxi,fixb,betaini,printd,eps1)
   datevec = out$datevec
 
   #procedure for F test
@@ -155,10 +188,16 @@ dotest = function(y_name,z_name=NULL,x_name=NULL,data,
   for (sl in 1:4){
     #critical values for supF test
     cv = getcv1(sl,eps1)
-    cv_supF[sl,] = cv[q,1:m,drop=FALSE]
+    #pad missing values with NA
+    if(dim(cv)[2]<m){
+      tmp_cv = dim(cv)[2]
+      cv_supF[sl,1:tmp_cv] = cv[q,1:tmp_cv,drop=FALSE]
+      cv_supF[sl,tmp_cv+1:m] = matrix(NA,1,m - tmp_cv)
+    }else{
+    cv_supF[sl,] = cv[q,1:m,drop=FALSE]}
     if (printd==1){
     print(paste('The critical values at the',siglev[sl,1],'% level are (for k = 1 to',m,'):'))
-    print(cv[q,1:m,drop=FALSE])}
+    print(cv_supF[sl,1:m,drop=FALSE])}
   }
 
   #procedure for Dmax and UDmax test
@@ -187,94 +226,126 @@ dotest = function(y_name,z_name=NULL,x_name=NULL,data,
   }
   rownames(cv_supF) = siglev
   rownames(cv_Dmax) = siglev
-
+  if (m > 5){
+  UDmax = max(ftest[1:5,])}
+  else{
+    UDmax = max(ftest)
+  }
 
   out = list('ftest' = ftest, 'cv_supF' = cv_supF,
-             'cv_Dmax' = cv_Dmax, 'UDmax' = max(ftest))
+             'cv_Dmax' = cv_Dmax, 'UDmax' = UDmax)
   out$mbreak = m
   class(out) = 'sbtests'
 
   out = compile_sbtests(out)
-  return(out)}
+  return(out)
 }
 
 
-#' SupF(l+1|l) test
+#' Sequential Sup F tests
 #'
-#' Function computes the procedure of SupF(l+1|l) test. The function returns
-#' the test statistics of supF(l+1|l) test
-#' with null hypothesis is maximum number of break is l
-#' and alternative hypothesis is l+1.
-#' The l breaks under the null hypothesis are taken from the
-#' global minimization. Also, new date (if available) and critical values based on
-#' significant levels are returned for plotting and inference
+#' `doseqtests()` computes the sequential sup F tests of l versus l+1 for l from
+#' 1 to m with each corresponding null hypothesis of maximum number of break is l
+#' and alternative hypothesis is l+1. The l breaks under the null hypothesis
+#' are taken from the global minimization estimation
 #'
-#'@param y dependent variables in matrix form
-#'@param z matrix of independent variables with coefficients are allowed to change across
-#'regimes
-#'@param x matrix of independent variables with coefficients constant across regimes
-#'@param m maximum number of breaks
-#'@param eps1 trimming level
-#'@param eps convergence criterion for iterative recursive computation
-#'@param maxi maximum number of iterations
-#'@param fixb option to use fixed initial input \eqn{\beta}. If \code{1},
-#'the model will use values given in \code{betaini}. If \code{0}, betaini is skipped
-#'@param betaini Initial \eqn{beta_0} to use in estimation
-#'@param printd option to print results of iterations for partial change model
-#'@param prewhit option to use AR(1) for prewhitening
-#'@param robust,hetdat,hetvar options on error terms assumptions
-#' @return A list that contains following:
+#' @param y_name name of dependent variable in the data set
+#' @param z_name name of independent variables in the data set which coefficients are allowed to change
+#' across regimes. \code{default} is a vector of 1 (Mean-shift model)
+#' @param x_name name of independent variables in the data set which coefficients are constant across
+#' regimes. \code{default} is `NULL`
+#' @param data name of data set used
+#' @param const indicates whether the regression model include an
+#' intercept changing across regimes. Default value is 1
+#' @param m maximum number of breaks
+#' @param eps1 value of trimming (in percentage) for the construction
+#' and critical values. Minimal segment length `h` will be set
+#' at \code{default} = int(\code{eps1}*T) (T is total sample size).
+#'  There are five options:
 #' \itemize{
-#'\item{supfl: SupF(l+1|l) test statistics}
-#'\item{cv: Critical values for SupF(l+1|l) test}
-#'\item{ndat: New date (if available)} }
+#' \item `eps1=0.05` Maximal value of `m` = 10.
+#' \item `eps1=0.10` Maximal value of `m` = 8.
+#' \item `eps1=.15` Maximal value of `m` = 5.
+#' \item `eps1=.20` Maximal value of `m` = 3.
+#' \item `eps1=.25` Maximal value of `m` = 2.
+#' \item `eps1=0` is not allowed. The test is undefined for no trimming level.
+#' }
+#' @param prewhit set to \code{1} to apply AR(1) prewhitening prior to estimating
+#' the long run covariance matrix.
+#' @param robust set to \code{1} to allow for heterogeneity
+#' and autocorrelation in the residuals, \code{0} otherwise.
+#' The method used is \emph{Andrews(1991)} automatic bandwidth with AR(1) approximation with quadratic
+#' kernel. Note: Do not set to \code{1} if lagged dependent variables are
+#' included as regressors.
+#' @param hetdat option for the construction of the F tests. Set to 1 if want to
+#' allow different moment matrices of the regressors across segments.
+#' If \code{hetdat} = \code{0}, the same moment matrices are assumed for each segment
+#' and estimated from the ful sample. It is recommended to set
+#' \code{hetdat}=\code{1} if number of regressors \code{x} > \code{0}.
+#' @param hetvar option for the construction of the F tests.Set to \code{1}
+#' if users want to allow for the variance of the residuals to be different across segments.
+#' If \code{hetvar}=\code{0}, the variance of the residuals is assumed constant
+#' across segments and constructed from the full sample. \code{hetvar}=\code{1} when \code{robust} =\code{1})
+#' @param hetomega used in the construction of the confidence intervals for the break
+#' dates. If \code{hetomega}=\code{0}, the long run covariance matrix of zu is
+#' assumed identical across segments
+#' (the variance of the errors u if \code{robust}=\code{0})
+#' @param hetq used in the construction of the confidence intervals for the break
+#' dates. If \code{hetq}=\code{0}, the moment matrix of the data is assumed identical
+#' across segments
+#' @param maxi number of maximum iterations for recursive calculations of finding
+#' global minimizers.\code{default} = 10 (For partial change model ONLY)
+#' @param eps convergence criterion for recursive calculations (For partial change model ONLY)
+#' @param fixb option to use fixed initial input \eqn{\beta}. If \code{1},
+#' the model will use values given in \code{betaini}. If \code{0}, betaini is skipped
+#' @param betaini Initial \eqn{beta_0} to use in estimation (Must be a `p x 1` matrix, where p is number of x variables)
+#' @param printd Print option for model estimation. \code{default} = 0, to
+#' suppress intermediate outputs printing to console
+#' @return A list that contains following:
+#'\describe{
+#'\item{supfl}{SupF(l+1|l) test statistics.}
+#'\item{cv}{Critical values for SupF(l+1|l) test.}}
+#'
+#'@examples
+#'doseqtests('inf',c('inflag','lbs','inffut'),data=nkpc,prewhit=0)
+#'
 #'@export
+
 
 doseqtests = function(y_name,z_name=NULL,x_name=NULL,data,
                     m=5,eps=0.00001,eps1=0.15,maxi=10,fixb=0,betaini=0,printd=0,
                     prewhit=1,
                     robust=1,hetdat=1,hetvar=1,hetq=1,hetomega=1,const=1) {
-  eps1 = check_trimming(eps1)
 
   siglev=matrix(c(10,5,2.5,1),4,1)
   df = process_data(y_name = y_name,z_name = z_name,x_name = x_name,data=data,const)
   y = df$y
   z = df$z
   x = df$x
-
-
-  if (is.null(x)) {p = 0}
-  else {p = dim(x)[2]}
-
-  q = dim(z)[2]
+  p = df$p
+  q = df$q
+  if(eps1 == 0){ stop('The tests are undefined for 0% trimming level')}
   bigT = dim(y)[1]
-  h = round(eps1*bigT)
+  h = floor(eps1*bigT)
 
-  upper_m = floor(bigT/h)-1
-  if(m>upper_m){
-    warning(paste('\nNot enough observations for',m+1,'segments with minimum length per segment =',
-              h,'.The total required observations for such',m,'breaks would be ',(m+1)*h,'>T=',bigT,'\n'))
-    message(paste('Set m to',upper_m,'\n'))
-    m=upper_m
+  #check user specifications
+  conditions = check_trimming(bigT,eps1,m,h,p,q)
+
+  h=conditions$h
+  eps1=conditions$eps1
+  m=conditions$m
+
+  #check for collinearity/duplication of regressors
+  check_duplicate(z,x,z_name,x_name)
+
+  v_eps1 = c(0.05,0.10,0.15,0.20,0.25)
+  if(!eps1 %in% v_eps1){
+    stop('No matching trimming level available for testing')
   }
 
-  if(m<=0){
-    warning('\nMaximum number of breaks cannot be non-positive\n')
-    message(paste('Set m to',upper_m,'\n'))
-    m=upper_m
-  }
-
-  if(m<=1){
-    out=list()
-    out$mbreak = m
-    class(out) = 'seqtests'
-    out = compile_seqtests(out)
-    return(out)
-  }
-  else{
-    out = doglob(y,z,x,m,eps,eps1,maxi,fixb,betaini,printd)
-    datevec = out$datevec
-    bigvec = out$bigvec
+  out = doglob(y,z,x,m,eps,h,maxi,fixb,betaini,printd,eps1)
+  datevec = out$datevec
+  bigvec = out$bigvec
   supfl = matrix (0L,m,1)
   ndat = matrix (0L,m,1)
   for (i in seq(1,m-1,1)){
@@ -299,64 +370,131 @@ doseqtests = function(y_name,z_name=NULL,x_name=NULL,data,
   class(out) = 'seqtests'
   out = compile_seqtests(out)
   return(out)
-  }
 
 }
 
-#' Order estimation procedure
+#' Estimating number of breaks via information criterion
 #'
-#' The function carry out the procedure to estimate order
-#'  using BIC and the criterion of Liu, Wu and Zidek
+#' `doorder()` estimates the number of breaks
+#'  using one of the following information criteria:
+#' \itemize{
+#'  \item modified Bayesian information criterion by Kurozumi and Tuvaandorj, 2011,
+#'  \item modified Schwarz information criterion by Liu, Wu and Zidek, 1997,
+#'  \item Bayesian information criterion by Yao, 1988} 
+#'  and the structural break model corresponding to estimated number of breaks.
 #'
-#'@param y dependent variables in matrix form
-#'@param z matrix of independent variables with coefficients are allowed to change across
-#'regimes
-#'@param x matrix of independent variables with coefficients constant across regimes
+#' @param y_name name of dependent variable in the data set
+#' @param z_name name of independent variables in the data set which coefficients are allowed to change
+#' across regimes. \code{default} is vector of 1 (Mean-shift model)
+#' @param x_name name of independent variables in the data set which coefficients are constant across
+#' regimes. \code{default} is `NULL`
+#'@param data name of data set used
+#'@param const indicates whether the regression model include an
+#'intercept changing across regimes. Default value is 1
 #'@param m maximum number of breaks
-#'@param eps1 trimming level
+#'@param ic indicator which information criterion is used in selecting number of breaks:
+#'\itemize{
+#'\item \code{KT}
+#'\item \code{BIC}
+#'\item \code{LWZ} 
+#'}
+#'The default value is \code{KT}
+#' @param eps1 value of trimming (in percentage) for the construction
+#' and critical values. Minimal segment length `h` will be set
+#' at \code{default} = int(\code{eps1}*T) (T is total sample size).
+#  There are six options:
+#' There are five options:
+#' \itemize{
+#' \item `eps1=0.05` Maximal value of `m` = 10.
+#' \item `eps1=0.10` Maximal value of `m` = 8.
+#' \item `eps1=.15` Maximal value of `m` = 5.
+#' \item `eps1=.20` Maximal value of `m` = 3.
+#' \item `eps1=.25` Maximal value of `m` = 2.
+#' \item `eps1=0` This option allows users to explicitly specify
+#' minimum segment length `h` parameters}
 #'@param eps convergence criterion for iterative recursive computation
 #'@param maxi maximum number of iterations
 #'@param fixb option to use fixed initial input \eqn{\beta}. If \code{1},
 #'the model will use values given in \code{betaini}. If \code{0}, betaini is skipped
 #'@param betaini Initial \eqn{beta_0} to use in estimation
-#'@param printd option to print results of iterations for partial change model
-#'@param bic indicator which criterion is used in selecting number of breaks
-#'@return A list that contains following:
-#'\item{mBIC}{number of breaks selected by BIC}
-#'\item{mLWZ}{number of breaks selected by LWZ}
+#'@param printd  Print option for model estimation. \code{default} = 0, to
+#' suppress intermediate outputs printing to console
+#'@param prewhit set to \code{1} to apply AR(1) prewhitening prior to estimating
+#' the long run covariance matrix.
+#' @param robust set to \code{1} to allow for heterogeneity
+#' and autocorrelation in the residuals, \code{0} otherwise.
+#' The method used is \emph{Andrews(1991)} automatic bandwidth with AR(1) approximation with quadratic
+#' kernel. Note: Do not set to \code{1} if lagged dependent variables are
+#' included as regressors.
+#' @param hetdat option for the construction of the F tests. Set to 1 if want to
+#' allow different moment matrices of the regressors across segments.
+#' If \code{hetdat} = \code{0}, the same moment matrices are assumed for each segment
+#' and estimated from the ful sample. It is recommended to set
+#' \code{hetdat}=\code{1} if number of regressors \code{x} > \code{0}.
+#' @param hetvar option for the construction of the F tests.Set to \code{1}
+#' if users want to allow for the variance of the residuals to be different across segments.
+#' If \code{hetvar}=\code{0}, the variance of the residuals is assumed constant
+#' across segments and constructed from the full sample. \code{hetvar}=\code{1} when \code{robust} =\code{1})
+#' @param hetomega used in the construction of the confidence intervals for the break
+#' dates. If \code{hetomega}=\code{0}, the long run covariance matrix of zu is
+#' assumed identical across segments
+#' (the variance of the errors u if \code{robust}=\code{0})
+#' @param hetq used in the construction of the confidence intervals for the break
+#' dates. If \code{hetq}=\code{0}, the moment matrix of the data is assumed identical
+#' across segments
+#' @param h Minimum segment length of regime considered in estimation. If users want to specify a particular value, please set `eps1=0`
+#'@return A list of class `model` that contains one of the following:
+#'\describe{
+#'\item{mBIC}{change model with number of breaks selected by BIC}
+#'\item{mLWZ}{change model with number of breaks selected by LWZ}
+#'\item{mKT}{change model with number of breaks selected by KT}
+#'}
+#'
+#'@examples
+#'doorder('rate',data=real,ic=c('BIC'))
+#'
+#'@references Liu J, Wu S, Zidek JV (1997). \emph{"On Segmented Multivariate Regressions"},
+#'Statistica Sinica, 7, 497-525.
+#'Yao YC (1988). \emph{"Estimating the Number of Change-points via Schwartz Criterion"},
+#' Statistics and Probability Letters, 6, 181-189.
+#'Kurozumi E, Tuvaandorj P (2011). \emph{"Model Selection Criteria in Multivariate Models with
+#'Multiple Structural Changes"}, Journal of Econometrics 164, 218-238.
 #'@export
-#'@references
 
 doorder = function(y_name,z_name = NULL,x_name = NULL,data,
                    m=5,eps=0.00001,eps1=0.15,maxi=10,fixb=0,
-                   betaini=0,printd=0,opt='BIC',const=1) {
-
-  #need to use new checker's functions:
-  #check eps/check m/ check regressors for collinearity
-
-
+                   betaini=0,printd=0,ic='KT',const=1,h=NULL,
+                   prewhit=1,hetdat=1,hetq=1,hetomega=1,
+                   hetvar=1,robust=1) {
 
   df = process_data(y_name = y_name,z_name = z_name,x_name = x_name,data=data,const)
   y = df$y
   z = df$z
   x = df$x
-
-
+  p = df$p
+  q = df$q
   bigT = dim(y)[1]
-  #check trimming value
-  eps1 = check_trimming(eps1)
-  #check input number of breaks
-  m = check_m(bigT,eps1,m)
-  h = round(eps1*bigT)
 
-  if (is.null(x)) {p = 0}
-  else {p = dim(x)[2]}
-  q = dim(z)[2]
+  #check user specifications
+  conditions = check_trimming(bigT,eps1,m,h,p,q)
+
+  h=conditions$h
+  eps1=conditions$eps1
+  m=conditions$m
+
+  #check for collinearity/duplication of regressors
+  check_duplicate(z,x,z_name,x_name)
+
   if (p == 0){zz = z}
   else{zz = cbind(z,x)}
-  temp = doglob(y,z,x,m,eps,eps1,maxi,fixb,betaini,printd)
+  #if(eps1 == 0){
+    #recompute eps1_star with matching h when eps1 = 0 by user input
+   # eps1_s = bigT/h/100
+    #temp = doglob(y,z,x,m,eps,eps1_s,maxi,fixb,betaini,printd)
+  #}else{
+  temp = doglob(y,z,x,m,eps,h,maxi,fixb,betaini,printd,eps1)
+  #}
   glb = temp$glb
-  bigT = dim(y)[1]
   ssr0 = nssr(y,zz)
   delta0 = 0.1 #optimal parameters in LWZ paper
   c0 = 0.299
@@ -395,13 +533,13 @@ doorder = function(y_name,z_name = NULL,x_name = NULL,data,
   mKT = which.min(kt) - 1
 
 
-  if (opt == 'BIC'){
+  if (ic == 'BIC'){
     mSEL=mBIC
     p_name = 'BIC'
-  }else if(opt == 'LWZ') {
+  }else if(ic == 'LWZ') {
     mSEL=mLWZ
     p_name = 'LWZ'
-  }else if(opt == 'KT') {
+  }else if(ic == 'KT') {
     mSEL=mKT
     p_name = 'KT'
   }else{
@@ -418,13 +556,6 @@ doorder = function(y_name,z_name = NULL,x_name = NULL,data,
   }
   else{
     date = temp$datevec[seq(1,mSEL,1),mSEL,drop=FALSE]
-    hetq=1
-    hetomega=1
-    hetdat=1
-    hetomega=1
-    hetvar=1
-    robust=1
-    prewhit=1
     out = estim(mSEL,q,z,y,date,robust,prewhit,hetomega,hetq,x,p,hetdat,hetvar)
     out$p_name = p_name
     out$nbreak = mSEL
@@ -447,56 +578,106 @@ doorder = function(y_name,z_name = NULL,x_name = NULL,data,
 
 
 
-#' Sequential procedure
+#' Estimating number of breaks using sequential tests
 #'
-#'function to apply sequential procedure to obtain number of breaks and break
-#'dates. Current version only allows pure structural changes. This will be
-#'generalized
+#' `dosequa()` sequentially increases the number of breaks from `1` to `m`
+#' until the sequential tests reject and estimate the structural change model
+#' with corresponding estimated breaks. The procedure is proposed by
+#' Bai and Perron, 1998.
 #'
-#'@param y dependent variables in matrix form
-#'@param z matrix of independent variables with coefficients are allowed to change across
-#'regimes
-#'@param x matrix of independent variables with coefficients constant across regimes
-#'@param m maximum number of breaks
-#'@param eps1 trimming level
-#'@param eps convergence criterion for iterative recursive computation
-#'@param maxi maximum number of iterations
-#'@param fixb option to use fixed initial input \eqn{\beta}. If \code{1},
-#'the model will use values given in \code{betaini}. If \code{0}, betaini is skipped
-#'@param betaini Initial \eqn{beta_0} to use in estimation
-#'@param printd option to print results of iterations for partial change model
-#'@param prewhit option to use AR(1) for prewhitening process
-#'@param robust,hetdat,hetvar options on error terms assumptions
-#' @return A list that contains following:
+#' @param y_name name of dependent variable in the data set
+#' @param z_name name of independent variables in the data set, which coefficients are allowed to change
+#' across regimes. Default value is vector of 1 (Mean-shift model).
+#' @param x_name name of independent variables in the data set, which coefficients are constant across
+#' regimes. Default value is \code{NULL}.
+#' @param data name of the data set used
+#' @param m maximum number of breaks
+#' @param eps1 value of trimming (in percentage) for the construction
+#' and critical values. Minimal segment length `h` will be set
+#' at default value = \code{int(eps1 * T)} (T is total sample size).
+#' There are five options:
 #' \itemize{
-#'\item{nbreak}{Number of breaks}
-#'\item{dateseq}{Sequence of break dates}}
-#'@export
+#'   \item \code{eps1 = 0.05} Maximal value of \code{m} = 10.
+#'   \item \code{eps1 = 0.10} Maximal value of \code{m} = 8.
+#'   \item \code{eps1 = 0.15} Maximal value of \code{m} = 5.
+#'   \item \code{eps1 = 0.20} Maximal value of \code{m} = 3.
+#'   \item \code{eps1 = 0.25} Maximal value of \code{m} = 2.
+#'   \item \code{eps1 = 0} This option is not allowed.
+#' }
+#' @param eps convergence criterion for iterative recursive computation
+#' @param maxi maximum number of iterations
+#' @param fixb option to use fixed initial input \eqn{\beta}. If \code{1},
+#' the model will use values given in \code{betaini}. If \code{0}, \code{betaini} is skipped
+#' @param betaini Initial \eqn{\beta_0} to use in estimation
+#' @param printd Print option for model estimation. \code{default} = 0, to
+#' suppress intermediate outputs printing to console
+#' @param prewhit set to \code{1} to apply AR(1) prewhitening prior to estimating
+#' the long run covariance matrix.
+#' @param robust set to \code{1} to allow for heterogeneity
+#' and autocorrelation in the residuals, \code{0} otherwise. 
+#' The method used is \emph{Andrews(1991)} automatic bandwidth with AR(1) approximation with quadratic
+#' kernel. Note: Do not set to \code{1} if lagged dependent variables are
+#' included as regressors.
+#' @param hetdat option for the construction of the F tests. Set to 1 if you want to
+#' allow different moment matrices of the regressors across segments. 
+#' If \code{hetdat} = \code{0}, the same moment matrices are assumed for each segment
+#' and estimated from the full sample. It is recommended to set
+#' \code{hetdat = 1} if number of regressors \code{x} > \code{0}.
+#' @param hetvar option for the construction of the F tests. Set to \code{1}
+#' if users want to allow for the variance of the residuals to be different across segments.
+#' If \code{hetvar} = \code{0}, the variance of the residuals is assumed constant
+#' across segments and constructed from the full sample. \code{hetvar} = \code{1} when \code{robust} = \code{1}
+#' @param hetomega used in the construction of the confidence intervals for the break
+#' dates. If \code{hetomega} = \code{0}, the long run covariance matrix of zu is
+#' assumed identical across segments (the variance of the errors u if \code{robust} = 0).
+#' @param hetq used in the construction of the confidence intervals for the break
+#' dates. If \code{hetq} = \code{0}, the moment matrix of the data is assumed identical
+#' across segments.
+#' @param signif significance level used in the sequential test to select number of breaks.
+#' \itemize{
+#'   \item 4: 1\% level
+#'   \item 3: 2.5\% level
+#'   \item 2: 5\% level
+#'   \item 1: 10\% level
+#' }
+#' @param const indicates whether the regression model includes an
+#' intercept changing across regimes. Default value is 1
+#'
+#' @return A list of `model` class with the number of breaks selected by sequential tests.
+#' 
+#' @examples
+#' dosequa('rate', data = real, signif = 1)
+#' 
+#' @export
 
 dosequa = function(y_name,z_name=NULL,x_name=NULL,data,
                    m=5,eps=0.00001,eps1=0.15,maxi=10,fixb=0,betaini=0,printd=0,
-                   prewhit=1,robust=1,hetdat=1,hetvar=1,const=1,signif=2) {
+                   prewhit=1,robust=1,hetdat=1,hetvar=1,hetq=1,hetomega=1,const=1,signif=2) {
 
 
   df = process_data(y_name = y_name,z_name = z_name,x_name = x_name,data=data,const)
   y = df$y
   z = df$z
   x = df$x
-
-  if (is.null(x)) {p = 0}
-  else {p = dim(x)[2]}
-
-  q = dim(z)[2]
+  p = df$p
+  q = df$q
   bigT = dim(y)[1]
-  #check trimming value
-  eps1 = check_trimming(eps1)
-  #check input number of breaks
-  m = check_m(bigT,eps1,m)
-  h = round(eps1*bigT)
+
+  #check user specifications
+  conditions = check_trimming(bigT,eps1,m,h,p,q)
+  h=conditions$h
+  eps1=conditions$eps1
+  m=conditions$m
+
+  #check for collinearity/duplication of regressors
+  check_duplicate(z,x,z_name,x_name)
+
   nbreak = 0
   siglev=matrix(c(10,5,2.5,1),4,1)
 
-
+if(eps1 == 0){
+  stop('The estimation procedure is invalid since it requires testing, but eps1 is set to 0')
+}
 
    # print(paste('Output from the sequential procedure at significance level',
    #              siglev[j,1],'%'))
@@ -532,8 +713,6 @@ dosequa = function(y_name,z_name=NULL,x_name=NULL,data,
   else{
     date = dateseq
     date = t(date)
-    hetq=1
-    hetomega=1
     out = estim(mSEL,q,z,y,date,robust,prewhit,hetomega,hetq,x,p,hetdat,hetvar)
     out$p_name = 'dosequa'
     out$nbreak = mSEL
@@ -547,6 +726,7 @@ dosequa = function(y_name,z_name=NULL,x_name=NULL,data,
     out$y = y
     out$x = x
     out$z = z
+    out$signif = signif
     out = compile_model(out)
     return(out)
   }
@@ -555,58 +735,107 @@ dosequa = function(y_name,z_name=NULL,x_name=NULL,data,
 }
 
 
+#' Estimating number of breaks using repartition procedure
+#'
+#' `dorepart()` computes the repartition estimates of the breaks obtained
+#' by the sequential method by Bai, 1995. It allows estimates that have the same
+#' asymptotic distribution as those obtained by global minimization. Otherwise,
+#' the output from the procedure "estim" below does not deliver asymptotically
+#' correct confidence intervals for the break dates.
+#'
+#' @param y_name name of dependent variable in the data set
+#' @param z_name name of independent variables in the data set, whose coefficients are allowed to change
+#' across regimes. \code{default} is a vector of 1 (Mean-shift model).
+#' @param x_name name of independent variables in the data set whose coefficients are constant across
+#' regimes. \code{default} is \code{NULL}.
+#' @param data name of the data set used
+#' @param m maximum number of breaks
+#' @param eps1 value of trimming (in percentage) for the construction
+#' and critical values. Minimal segment length \code{h} will be set
+#' at \code{default} = \code{int(eps1 * T)} (T is total sample size).
+#' There are five options:
+#' \itemize{
+#'   \item \code{eps1 = 0.05} Maximal value of \code{m} = 10.
+#'   \item \code{eps1 = 0.10} Maximal value of \code{m} = 8.
+#'   \item \code{eps1 = 0.15} Maximal value of \code{m} = 5.
+#'   \item \code{eps1 = 0.20} Maximal value of \code{m} = 3.
+#'   \item \code{eps1 = 0.25} Maximal value of \code{m} = 2.
+#'   \item \code{eps1 = 0} This option is not allowed.
+#' }
+#' @param eps convergence criterion for iterative recursive computation
+#' @param maxi maximum number of iterations
+#' @param fixb option to use fixed initial input \eqn{\beta}. If \code{1},
+#' the model will use values given in \code{betaini}. If \code{0}, \code{betaini} is skipped
+#' @param betaini Initial \eqn{\beta_0} to use in estimation
+#' @param printd Print option for model estimation. \code{default} = 0, to
+#' suppress intermediate outputs printing to console
+#' @param m Maximum number of structural changes allowed. If not specified,
+#' \code{m} will be set to \code{default} value matching the \code{eps1} input
+#' @param const indicates whether the regression model includes an
+#' intercept changing across regimes. Default value is 1
+#' @param prewhit set to \code{1} to apply AR(1) prewhitening prior to estimating
+#' the long run covariance matrix.
+#' @param robust set to \code{1} to allow for heterogeneity
+#' and autocorrelation in the residuals, \code{0} otherwise. 
+#' The method used is \emph{Andrews(1991)} automatic bandwidth with AR(1) approximation with quadratic
+#' kernel. Note: Do not set to \code{1} if lagged dependent variables are
+#' included as regressors.
+#' @param hetdat option for the construction of the F tests. Set to 1 if you want to
+#' allow different moment matrices of the regressors across segments. 
+#' If \code{hetdat} = \code{0}, the same moment matrices are assumed for each segment
+#' and estimated from the full sample. It is recommended to set
+#' \code{hetdat = 1} if number of regressors \code{x} > \code{0}.
+#' @param hetvar option for the construction of the F tests. Set to \code{1}
+#' if users want to allow for the variance of the residuals to be different across segments.
+#' If \code{hetvar} = \code{0}, the variance of the residuals is assumed constant
+#' across segments and constructed from the full sample. \code{hetvar} = \code{1} when \code{robust} = \code{1}
+#' @param signif significance level used to sequential test to select number of breaks.
+#' \itemize{
+#'   \item 4: 1\% level
+#'   \item 3: 2.5\% level
+#'   \item 2: 5\% level
+#'   \item 1: 10\% level
+#' }
+#'
+#' @return A list of class \code{model} for the structural break model estimated by
+#' the repartition procedure.
+#' 
+#' @examples
+#' dorepart('inf', 'inflag', 'inffut', data = nkpc)
+#' 
+#' @references
+#' Bai, J. 1995, \emph{"Estimating Breaks One at a Time"}, Econometric Theory, 13,
+#' 315-352
+#' 
+#' @export
 
-#'Repartition procedure
-#'
-#'The following procedure constructs the so-called repartition
-#'estimates of the breaks obtained by the sequential method (see Bai
-#'(1995), Estimating Breaks one at a time, Econometric Theory, 13,
-#'315-352. It alows estimates that have the same asymptotic
-#'distribution as those obtained by global minimization. Otherwise, the
-#'output from the procedure "estim" below do not deliver asymptotically
-#'correct confidence intervals for the break dates.
-#'
-#'@param y dependent variables in matrix form
-#'@param z matrix of independent variables with coefficients are allowed to change across
-#'regimes
-#'@param x matrix of independent variables with coefficients constant across regimes
-#'@param m maximum number of breaks
-#'@param eps1 trimming level
-#'@param eps convergence criterion for iterative recursive computation
-#'@param maxi maximum number of iterations
-#'@param fixb option to use fixed initial input \eqn{\beta}. If \code{1},
-#'the model will use values given in \code{betaini}. If \code{0}, betaini is skipped
-#'@param betaini Initial \eqn{beta_0} to use in estimation
-#'@param printd option to print results of iterations for partial change model
-#'@param prewhit option to use AR(1) for prewhitening process
-#'@param robust,hetdat,hetvar options on error terms assumptions
-#'@return reparv Repartition method estimation of break dates
-#'
-#'@export
+
 dorepart = function(y_name,z_name = NULL,x_name = NULL,data,
                     m=5,eps=0.00001,eps1=0.15,maxi=10,fixb=0,betaini=0,printd=0,
                     prewhit=1,robust=1,hetdat=1,hetvar=1,const=1,signif=2){
 
-  if(eps1 <0.05 || eps1 >0.5){
-    warning('Invalid trimming level, set trimming level to 15%')
-    eps1 = 0.15
-  }
-
+  #check dataset conformity
   df = process_data(y_name = y_name,z_name = z_name,x_name = x_name,data=data,const)
   y = df$y
   z = df$z
   x = df$x
-
-  if (is.null(x)) {p = 0}
-  else {p = dim(x)[2]}
-
-  q = dim(z)[2]
+  p = df$p
+  q = df$q
   bigT = dim(y)[1]
-  #check trimming value
-  eps1 = check_trimming(eps1)
-  #check input number of breaks
-  m = check_m(bigT,eps1,m)
-  h = round(eps1*bigT)
+
+  #check user specifications
+  conditions = check_trimming(bigT,eps1,m,h,p,q)
+
+  h=conditions$h
+  eps1=conditions$eps1
+  m=conditions$m
+
+  #check for collinearity/duplication of regressors
+  check_duplicate(z,x,z_name,x_name)
+
+  if(eps1 == 0){
+    stop('The estimation procedure is invalid since it requires testing, but eps1 is set to 0')
+  }
 
   reparv = matrix (0L,4,m)
   siglev=matrix(c(10,5,2.5,1),4,1)
@@ -659,6 +888,7 @@ dorepart = function(y_name,z_name = NULL,x_name = NULL,data,
     out$y = y
     out$x = x
     out$z = z
+    out$signif = signif
     out = compile_model(out)
     return(out)
   }
@@ -669,61 +899,109 @@ dorepart = function(y_name,z_name = NULL,x_name = NULL,data,
 
 #'Estimate a model with pre-specified number of breaks
 #'
-#'The following procedure constructs the so-called repartition
-#'estimates of the breaks obtained by the sequential method (see Bai
-#'(1995), Estimating Breaks one at a time, Econometric Theory, 13,
-#'315-352. It alows estimates that have the same asymptotic
-#'distribution as those obtained by global minimization. Otherwise, the
-#'output from the procedure "estim" below do not deliver asymptotically
-#'correct confidence intervals for the break dates.
+#'`dofix()` compute a structural change model with pre-specified number
+#'of breaks.
 #'
-#'@param y dependent variables in matrix form
-#'@param z matrix of independent variables with coefficients are allowed to change across
-#'regimes
-#'@param x matrix of independent variables with coefficients constant across regimes
-#'@param m maximum number of breaks
-#'@param eps1 trimming level
+#' @param y_name name of dependent variable in the data set
+#' @param z_name name of independent variables in the data set which coefficients are allowed to change
+#' across regimes. \code{default} is vector of 1 (Mean-shift model)
+#' @param x_name name of independent variables in the data set which coefficients are constant across
+#' regimes. \code{default} is `NULL`
+#'@param data name of data set used
+#'@param const indicates whether the regression model include an
+#'intercept changing across regimes. Default value is 1
+#'@param fixn number of breaks specified
+#' @param eps1 value of trimming (in percentage) for the construction
+#' and critical values. Minimal segment length `h` will be set
+#' at \code{default} = int(\code{eps1}*T) (T is total sample size).
+#  There are five options:
+#' \itemize{
+#'   \item \code{eps1 = 0.05} Maximal value of \code{m} = 10.
+#'   \item \code{eps1 = 0.10} Maximal value of \code{m} = 8.
+#'   \item \code{eps1 = 0.15} Maximal value of \code{m} = 5.
+#'   \item \code{eps1 = 0.20} Maximal value of \code{m} = 3.
+#'   \item \code{eps1 = 0.25} Maximal value of \code{m} = 2.
+#'   \item \code{eps1=0} This option allows users to explicitly specify
+#' minimum segment length `h` parameters.
+#' }
 #'@param eps convergence criterion for iterative recursive computation
 #'@param maxi maximum number of iterations
 #'@param fixb option to use fixed initial input \eqn{\beta}. If \code{1},
 #'the model will use values given in \code{betaini}. If \code{0}, betaini is skipped
 #'@param betaini Initial \eqn{beta_0} to use in estimation
-#'@param printd option to print results of iterations for partial change model
-#'@param prewhit option to use AR(1) for prewhitening process
-#'@param robust,hetdat,hetvar options on error terms assumptions
-#'@return reparv Repartition method estimation of break dates
+#'@param printd  Print option for model estimation. \code{default} = 0, to
+#' suppress intermediate outputs printing to console
+#'@param prewhit set to \code{1} to apply AR(1) prewhitening prior to estimating
+#' the long run covariance matrix.
+#' @param robust set to \code{1} to allow for heterogeneity
+#' and autocorrelation in the residuals, \code{0} otherwise.
+#' The method used is \emph{Andrews(1991)} automatic bandwidth with AR(1) approximation with quadratic
+#' kernel. Note: Do not set to \code{1} if lagged dependent variables are
+#' included as regressors.
+#' @param hetdat option for the construction of the F tests. Set to 1 if want to
+#' allow different moment matrices of the regressors across segments.
+#' If \code{hetdat} = \code{0}, the same moment matrices are assumed for each segment
+#' and estimated from the ful sample. It is recommended to set
+#' \code{hetdat}=\code{1} if number of regressors \code{x} > \code{0}.
+#' @param hetvar option for the construction of the F tests.Set to \code{1}
+#' if users want to allow for the variance of the residuals to be different across segments.
+#' If \code{hetvar}=\code{0}, the variance of the residuals is assumed constant
+#' across segments and constructed from the full sample. \code{hetvar}=\code{1} when \code{robust} =\code{1})
+#' @param hetomega used in the construction of the confidence intervals for the break
+#' dates. If \code{hetomega}=\code{0}, the long run covariance matrix of zu is
+#' assumed identical across segments
+#' (the variance of the errors u if \code{robust}=\code{0}).
+#' @param hetq used in the construction of the confidence intervals for the break
+#' dates. If \code{hetq}=\code{0}, the moment matrix of the data is assumed identical
+#' across segments
+#' @param h Minimum segment length of regime considered in estimation. If users want to specify a particular value, please set `eps1=0`
+#'
+#'@examples
+#'dofix('rate',data=real,fixn=3)
+#'
+#'@return out A list of class `model` contains all information about the
+#'estimated structural change model with `fixn` breaks
 #'
 #'@export
-#'
-#Estimate a model with pre-specified number of breaks
+
 dofix = function(y_name,z_name = NULL,x_name=NULL,data,
                     fixn=5,eps=0.00001,eps1=0.15,maxi=10,fixb=0,betaini=0,printd=0,
-                    prewhit=1,robust=1,hetdat=1,hetvar=1,hetq=1,hetomega=1,const=1){
-
-
+                    prewhit=1,robust=1,hetdat=1,hetvar=1,hetq=1,hetomega=1,const=1,h=NULL){
 
   if(fixn<0){
     warning('\nThe maximum number of breaks cannot be negative, set prespecified breaks = 2\n')
     fixn = 2
   }
 
+  #check dataset conformity
   df = process_data(y_name = y_name,z_name = z_name,x_name = x_name,data=data,const)
   y = df$y
   z = df$z
   x = df$x
-
-
-  if (is.null(x)) {p = 0}
-  else {p = dim(x)[2]}
-
-  q = dim(z)[2]
+  p = df$p
+  q = df$q
+  y_name = df$y_name
+  z_name = df$z_name
+  x_name = df$x_name
   bigT = dim(y)[1]
-  #check trimming value
-  eps1 = check_trimming(eps1)
-  #check input number of breaks
-  fixn = check_m(bigT,eps1,fixn)
-  h = round(eps1*bigT)
-  t_out = doglob(y,z,x,fixn,eps,eps1,maxi,fixb,betaini,printd)
+
+  #check user specifications
+  conditions = check_trimming(bigT,eps1,fixn,h,p,q)
+
+  h=conditions$h
+  eps1=conditions$eps1
+  fixn=conditions$m
+
+  #check for collinearity/duplication of regressors
+  check_duplicate(z,x,z_name,x_name)
+
+  #if(eps1 == 0){
+    #recompute eps1_star with matching h when eps1 = 0 by user input
+    #eps1_s = bigT/h
+   # t_out = doglob(y,z,x,fixn,eps,eps1_s,maxi,fixb,betaini,printd)
+  #}else{
+    t_out = doglob(y,z,x,fixn,eps,h,maxi,fixb,betaini,printd,eps1)
+  #}
   datevec = t_out$datevec
 if(length(datevec) == 0){
   message('\nThere are no breaks selected by the procedure\n')
@@ -737,32 +1015,60 @@ if(length(datevec) == 0){
   hetq=1
   hetomega=1
   fix_mdl = estim(fixn,q,z,y,date,robust,prewhit,hetomega,hetq,x,p,hetdat,hetvar)
-out = fix_mdl
-out$p_name = 'fix'
-out$nbreak = fixn
-class(out) = 'model'
-out$numz = q
-out$numx = p
-out$const = const
-out$y_name =y_name
-out$x_name =x_name
-out$z_name =z_name
-out$y = y
-out$z = z
-out$x = x
-out = compile_model(out)
+  out = fix_mdl
+  out$p_name = 'fix'
+  out$nbreak = fixn
+  class(out) = 'model'
+  out$numz = q
+  out$numx = p
+  out$const = const
+  out$y_name =y_name
+  out$x_name =x_name
+  out$z_name =z_name
+  out$y = y
+  out$z = z
+  out$x = x
+  out = compile_model(out)
 return(out)}
 }
 
 
-#Format output of n break model
+#'Format output of n break model
 #'
-#'@noRd
-compile_model = function (x,digits = -1,...){
-  if (digits==-1){digits = 3}
+#'\code{compile_model()} compiles the information of \code{model} class object \code{x} into three
+#'main tables:
+#'\describe{
+#'\item{date_tab}{Table for estimated break date in the model
+#'with 90\% and 95\% confidence intervals based on \code{robust},\code{hetomega}, \code{hetq} options
+#'for errors and \code{prewhit} option.}
+#'\item{RS_tab}{Table for estimated coefficients for \code{z} regressors
+#'with corrected standard errors based on \code{robust},\code{hetdat},\code{hetvar}
+#'options for errors and \code{prewhit} option.}
+#'\item{FS_tab}{Table for estimated coefficients for \code{x} regressors
+#'with corrected standard errors based on \code{robust}, \code{hetdat}, and \code{hetvar} options for errors and \code{prewhit} option.}
+#'}
+#'@param x the \code{model} class to format
+#'@param digits number of digits displayed in console. Default value is 3
+#'@return Formatted \code{x} with the following appended tables:
+#'\describe{
+#'\item{`date_tab`}{A data frame storing the break date estimated by the model,
+#'and their corresponding confidence intervals.}
+#'\item{`RS_tab`}{A data frame storing the estimated coefficients which allowed to
+#'change across regimes with corrected standard errors.}
+#'\item{`FS_tab`}{A data frame storing the estimated coefficients which is constant
+#'across regimes with corrected standard errors.}
+#'}
+#' @note
+#' \itemize{
+#' \item If \code{x} returns 0 number of estimated break,
+#' the function will return \code{NULL} value instead of the list in \code{Value}.
+#' \item If \code{x} is a pure structural break, the `FS_tab` will return \code{NULL} in
+#' \code{Value}.
+#' }
+#'@export
+compile_model = function (x,digits=3){
   if (x$nbreak == 0){return(NULL)}
   else {
-
     #format date estimation
     CI_95 = c()
     CI_90 = c()
@@ -779,18 +1085,11 @@ compile_model = function (x,digits = -1,...){
     rownames(date_tab) = c('Date','95% CI','90% CI')
 
 
-    #format full-sample coefficients
-    if (x$const == 1){
-      rnameRS = 'Const'
-      for (i in 1:x$numz-1){
+    #format regime-varying coefficients
+    rnameRS = c()
+    for (i in 1:x$numz){
         rnameRS = cbind(rnameRS,x$z_name[i])
       }
-    }else{
-      rnameRS = c()
-      for (i in 1:x$numz){
-        rnameRS = cbind(rnameRS,x$z_name[i])
-      }
-    }
 
     cnameRS = c()
     coefRS = c()
@@ -842,9 +1141,31 @@ compile_model = function (x,digits = -1,...){
 
 
 
-#'Summary output of a n breaks model
+#'Summary output of a structural breaks `model`
 #'
-#'Function to format the output of the n-break model
+#'`print` the output of the S3 class `model` with all relevant information:
+#'\itemize{
+#'\item name of procedure used to obtain number of breaks in the model
+#'\item print a table summarizing the break date estimation
+#'(including confidence interval for the estimated date)
+#'\item print a table summarizing the estimated coefficients for `z` regressors
+#'\item print a table summarizing the estimated coefficients for `x` regressors (if any)
+#'}
+#'
+#'@param x object of S3 class `model`
+#'@param ... further arguments passed to or from other methods.
+#'@return
+#'No return value, called for printing to console the following information in `x`:
+#'\itemize{
+#'\item Basic details of the model: name of prodecures invoked,
+#'number of estimated breaks, pure/partial structural change model,global min SSR
+#'\item `date_tab` summarizes estimated break dates, see \code{\link{compile_model}}
+#'\item `RS_tab` summarizes estimated coefficients allowed to change
+#'across regimes, see \code{\link{compile_model}}
+#'\item `FS_tab` summarizes estimated coefficients constant across regimes,
+#' see \code{\link{compile_model}}
+#'}
+#'
 #'@export
 
 print.model <- function(x,...)
@@ -858,7 +1179,13 @@ print.model <- function(x,...)
   if (x$nbreak == 0){
     cat(paste('\nNo breaks were found using',proc),'\n')
   }else{
-    cat(paste('\nThe number of breaks is estimated by',proc,'\n'))
+    if(x$p_name == 'dosequa' || x$p_name == 'dorepart'){
+      lev = switch(x$signif,'10%','5%','2.5%','1%')
+      cat(paste('\nThe number of breaks is estimated by',proc,'at',lev,'significance level\n'))
+    }
+      else{
+    cat(paste('\nThe number of breaks is estimated by',proc,'\n'))}
+
   if(x$numx == 0){
     cat(paste('Pure change model with',x$nbreak,'estimated breaks.',sep=' '))
   }else if(x$numx > 0){
@@ -884,13 +1211,25 @@ print.model <- function(x,...)
 }
 
 
-#'Summary output of Sup Wald test
+#' Compile the Output of Sup Wald Test
 #'
-#'Function to format the output of the Sup F test
-#'@export
+#' `compile_sbtests` formats the output of `sbtests` into two tables.
+#'
+#' @param x An `sbtests` class object.
+#' @param digits The number of decimal places displayed.
+#'
+#' @return A modified `sbtests` object, `x`, with two appended data frames:
+#' \describe{
+#'   \item{supF1}{A data frame containing SupF test statistics for testing 0 versus m breaks,
+#'     where m is the maximum number of breaks considered in `x`. It includes critical values
+#'     at the \emph{10\%, 5\%, 2.5\%, and 1\%} levels.}
+#'   \item{UDMax}{A data frame containing Double Max test statistics with critical values
+#'     at the \emph{10\%, 5\%, 2.5\%, and 1\%} levels.}
+#' }
+#'
+#' @export
 
-
-compile_sbtests <- function(x,digits = -1,...)
+compile_sbtests <- function(x,digits = 3)
 {
   if(x$mbreak == 0){
     return(x)
@@ -908,16 +1247,16 @@ compile_sbtests <- function(x,digits = -1,...)
   ftest = t(x$ftest)
 
 
-  supF1 = data.frame(ftest = format(round(ftest,3),nsmall=3))
-  cv_supF = format(round(x$cv_supF,3),nsmall = 3)
+  supF1 = data.frame(ftest = format(round(ftest,3),nsmall=digits))
+  cv_supF = format(round(x$cv_supF,3),nsmall = digits)
   colnames(cv_supF) = colnames(supF1)
   supF1 = rbind(supF1,cv_supF)
 
   rownames(supF1) = c('Sup F','10% CV','5% CV','2.5% CV','1% CV')
   colnames(supF1) = cnames1
 
-  UDmax = data.frame(UDmax = format(round(x$UDmax,3),nsmall = 3),
-                     cv = format(round(t(x$cv_Dmax),3),nsmall = 3))
+  UDmax = data.frame(UDmax = format(round(x$UDmax,3),nsmall = digits),
+                     cv = format(round(t(x$cv_Dmax),3),nsmall = digits))
 
   colnames(UDmax) = c('UDMax','10% CV','5% CV','2.5% CV','1% CV')
 
@@ -928,8 +1267,24 @@ compile_sbtests <- function(x,digits = -1,...)
 }
 
 
-#'S3 print function for sup F tests
-#'#'Function to format the output of the Sup F test
+#'Print Sup F and UDMax tests
+#'
+#'`print` prints the following information from a `sbtests` class object:
+#'\describe{
+#'\item{`supF1`}{A table reports sup F tests of 0 versus `1` upto `m` breaks with critical values for
+#' \emph{1\%, 2.5\%, 5\%, and 10\%} significance levels.}
+#'\item{`UDmax`}{A table reporting Double Max tests with critical values for
+#' \emph{1\%, 2.5\%, 5\%, and 10\%} significance levels.}
+#'}
+#'
+#'@param x class `sbtests` object
+#'@param ... further arguments passed to or from other methods
+#'
+#'@return No return value, only for printing formatted `sbtests` class object to console
+#'@examples
+#'supF = dotest('inf','inflag',data=nkpc)
+#'print(supF)
+#'
 #'@export
 
 print.sbtests <- function(x,...)
@@ -944,6 +1299,24 @@ print.sbtests <- function(x,...)
 }
 
 
+#'Compile the output of sequential Sup Wald test
+#'
+#'`compile_seqtests` formats the output of the `seqtests` class object to 1 table
+#'\describe{
+#'\item{`sfl`}{A table containing sequential sup F tests statistics
+#' of `l` versus `l+1` for `l` in `1` to `m` breaks
+#'with critical values of the corresponding tests at
+#' \emph{1\%, 2.5\%, 5\%, and 10\%} significance levels.}
+#'}
+#'
+#'@param x `seqtests` class object
+#'
+#'@return class `seqtests` list `x` with appended data frame `sfl` containing the
+#'sequential SupF test statistics with critical values at
+#'\emph{10\%, 5\%, 2.5\%, and 1\%} level.
+#'
+#'
+#'@export
 compile_seqtests = function(x){
   if(x$mbreak==1){
     #message('\nThe test is exactly 0 versus 1 break, hence the sequential test is not repeated\n')
@@ -976,7 +1349,21 @@ compile_seqtests = function(x){
   return (x)}
 }
 
-#'S3 function to print sequential tests
+#'Print sequential SupF tests
+#'
+#'`print` prints the object of class `seqtests` with the following information
+#'\itemize{
+#'\item Maximum number of breaks `m` in the tests
+#'\item `sfl` table with sequential sup F tests statistics of l versus
+#'l+1 breaks up to `m` breaks}
+#'
+#'@param x `seqtests` class object.
+#'@param ... further arguments passed to or from other methods.
+#'
+#'@return No return value, only for printing formatted `seqtests` class object to console
+#'@examples
+#'seq_supF = doseqtests('inf','inflag',data=nkpc)
+#'print(seq_supF)
 #'@export
 print.seqtests = function(x,...){
   if(x$mbreak==1){
@@ -992,9 +1379,25 @@ print.seqtests = function(x,...){
 
 
 
-#' new plot function for class model
+#' Plot structural change model
+#'
+#' `plot_model()` visualizes any object of class `model` with comparison between real,
+#' fitted values between  model of `m` breaks and null model of `0` breaks with options
+#' for confidence interval of break date.
+#' @param title title of the graph
+#' @param CI confidence intervals for break date and coefficient estimates visualize in terms of
+#' fitted values
+#' @param model object of class `model` in `mbreaks` package
 #' @importFrom ggplot2 ggplot aes annotate geom_segment geom_line ggtitle .data coord_cartesian scale_color_manual geom_ribbon
+#' @examples
+#' rate = dofix('rate',data=real,fixn=2)
+#' plot_model(rate,title='Ex-post US exchange rate')
+#'
+#' @return No return value, called for plotting class `model` object. For more details
+#' on `model` class, see [compile_model]
+#'
 #' @export
+
 plot_model = function(model,CI=0.95,title=NULL){
   m = model$nbreak
   if(m==0){

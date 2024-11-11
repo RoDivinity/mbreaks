@@ -2,12 +2,29 @@
 % Please edit documentation in R/Procedures.R
 \name{print.sbtests}
 \alias{print.sbtests}
-\title{S3 print function for sup F tests
-#'Function to format the output of the Sup F test}
+\title{Print Sup F and UDMax tests}
 \usage{
 \method{print}{sbtests}(x, ...)
 }
+\arguments{
+\item{x}{class `sbtests` object}
+
+\item{...}{further arguments passed to or from other methods}
+}
+\value{
+No return value, only for printing formatted `sbtests` class object to console
+}
 \description{
-S3 print function for sup F tests
-#'Function to format the output of the Sup F test
+`print` prints the following information from a `sbtests` class object:
+\describe{
+\item{`supF1`}{A table reports sup F tests of 0 versus `1` upto `m` breaks with critical values for
+\emph{1\%, 2.5\%, 5\%, and 10\%} significance levels.}
+\item{`UDmax`}{A table reporting Double Max tests with critical values for
+\emph{1\%, 2.5\%, 5\%, and 10\%} significance levels.}
+}
+}
+\examples{
+supF = dotest('inf','inflag',data=nkpc)
+print(supF)
+
 }

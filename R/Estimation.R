@@ -2,31 +2,32 @@
 
 #' Structural change model estimation
 #'
-#' Function to estimate the model by OLS given the obtained break dates
-#' It also computes and reports confidence intervals for the break dates and
-#' corrected standard errors of coefficients estimates given specifications of
-#' errors covariance matrix via robust, hetomega, hetq, hetdat and hetvar
+#' `estim()` estimates the structural change model by OLS given specified vector of break dates
+#' It also computes and reports confidence intervals for the
+#' break dates based on asymptotic distributions of break date  and
+#' corrected standard errors of coefficients estimates given the structure of covariance matrix
+#' for model errors by specifying error options `robust`, `hetomega`, `hetq`, `hetdat` and `hetvar`
 #'
-#'@references
-#'
-#'@param m number of break
-#'@param z matrix of regressor z with coefficients are allowed to change across
+#'@param y matrix of dependent variable
+#'@param z matrix of regressors with coefficients are allowed to change across
 #'regimes
-#'@param x matrix of regressor x with coefficients are constant across regimes
-#'@param q number of regressors z
+#'@param x matrix of regressors with coefficients are constant across regimes
+#'@param q number of `z` regressors z
 #'@param p number of regressors x
-#'@param b break dates
-#'@param hetomega,hetq,hetdat,hetvar options for assumptions on the error terms
+#'@param m number of breaks
+#'@param b vector of break dates
+#'@param robust,hetomega,hetq,hetdat,hetvar options for assumptions on the error terms.
+#'For more details, please refer to \code{\link{mdl}}.
 #'@param prewhit option to use prewhitening process based on AR(1) approximation
 #'@return A list containing the following components:
-#'\itemize{
-#'\item{date} {List of estimated breaks}
-#'\item{CI} {List of Confidence Intervals for each corresponding break}
-#'\item{beta} {Estimated coefficients of the regression. The first
+#'\describe{
+#'\item{date}{List of estimated breaks.}
+#'\item{CI}{List of Confidence Intervals for each corresponding break.}
+#'\item{beta}{Estimated coefficients of the regression. The first
 #'(\code{m}+1)*\code{q} are coefficients of \code{q} variables \code{z} that change across regimes.
 #'The last \code{p} are coefficients of \code{p} variables \code{x}
-#'that are constant across regimes}
-#'\item{SE} {Corrected standard errors of the corresponding coefficients}}
+#'that are constant across regimes.}
+#'\item{SE}{Corrected standard errors for the coefficients' estimates}}
 #'@export
 
 estim = function(m,q,z,y,b,robust,prewhit,hetomega,hetq,x,p,hetdat,hetvar){
@@ -49,7 +50,7 @@ estim = function(m,q,z,y,b,robust,prewhit,hetomega,hetq,x,p,hetdat,hetvar){
       reg = cbind(x,zbar)
     }
 
-    #estimation of β and δ in pure/partial model
+    #estimation of beta and delta in pure/partial model
     beta = OLS(y,reg)
     vdel = pvdel(y,z,m,q,bigT,b,prewhit,robust,x,p,1,hetdat,hetvar)
     colnames(beta) = 'coefficients'
@@ -91,19 +92,18 @@ estim = function(m,q,z,y,b,robust,prewhit,hetomega,hetq,x,p,hetdat,hetvar){
                'SSR' = SSR, 'resid' = resid,'fitted.values' = fitted)
     return (out)
   }
-
 }
 
 
 ##### Date estimation #######
-# Functions and sub-functions to carry out the procedure to find global
-# minimizers of the model by dynamic programming approach given SSR objective function
+# Functions and sub-functions to compute global
+# minimizers of the model by dynamic programming approach given the SSR objective function
 
 #' Calculate optimal point for segment partition
 #'
-#' Function calculates the optimal one break partition for a segment starting
-#' from start to last. The possible range of the break is within
-#' \eqn{[b_{last},b_{end}]} based on the vector of recursive SSR of the model
+#' `parti()` searchs for the optimal one break partition for a segment starting
+#' from start to last using the vector storing the sum of squared residuals for any
+#' segments between `b_start` and `b_last`
 #'
 #' @param start start date index of the segment
 #' @param last end date index of the segment
@@ -113,8 +113,8 @@ estim = function(m,q,z,y,b,robust,prewhit,hetomega,hetq,x,p,hetdat,hetvar){
 #' @return A list containing the following components:
 #' \item{ssrmin}{associated SSR of optimal break}
 #' \item{dx}{optimal date (global minimizer)}
-#' @references
-#' @export
+#'
+#' @noRd
 parti = function (start,b_start,b_end,last,bigvec,bigT) {
   #initialize array to store betas and value of index for procedure
   dvec = matrix(0L , nrow = bigT, ncol = 1)
@@ -138,7 +138,7 @@ parti = function (start,b_start,b_end,last,bigvec,bigT) {
 
 #' Optimal one break partitions with sequential method
 #'
-#' Function calculates an optimal one break partitions for a segment that
+#' `partione()` calculates an optimal one break partitions for a segment that
 #' starts at date start and ends at date last. It returns the optimal break
 #' and the associated SSR. Procedure used with the sequential method when
 #' the T*(T+1)/2 vector of SSR is not computed.
@@ -151,8 +151,8 @@ parti = function (start,b_start,b_end,last,bigvec,bigT) {
 #'@return A list containing the following components:
 #' \item{ssrmin}{associated SSR of optimal break}
 #' \item{dx}{optimal date (global minimizer)}
-#' @references
-#' @export
+#'
+#' @noRd
 partione = function(b1,b2,last,vssr,vssrev){
   dvec = matrix(0L,nrow = last, ncol = 1)
   j = b1;
@@ -169,23 +169,26 @@ partione = function(b1,b2,last,vssr,vssrev){
 
 #' Optimal one break partition in partial structural change model
 #'
-#' Function computes the optimal one break partition in partial structural
+#' `onebp()` computes the optimal one break partition in partial structural
 #' change model by searching over all possible breaks given x regressors
 #' have unchanged coefficients. Iteration to convergence is used to deal with
 #' 2 sets of estimates needed to obtain: full-sample coefficients and regime-specific
 #' coefficients
 #'
-#' @param y dependent variables
-#' @param z independent variables with coefficients
+#' @param y matrix of dependent variables
+#' @param z matrix of regressors with coefficients
 #' allowed to change across regimes
-#' @param x independent variables with constant coefficients across regimes
+#' @param x matrix of regressors with constant coefficients across regimes
 #' @param h minimal length of segment
 #' @param start initial date to search
 #' @param last last date to search
+#'
 #' @return A list containing the following components
 #' \item{ssrmin}{associated SSR of optimal break}
 #' \item{dx}{optimal date (global minimizer)}
-####
+#'
+#' @noRd
+
 onebp = function(y,z,x,h,start,last) {
   ssrind = 999999999999999
   i = matrix(h,ncol=1)
@@ -213,33 +216,30 @@ onebp = function(y,z,x,h,start,last) {
 
 
 
-#'Calculate optimal break points for pure structural change model
+#'Computation of global minimizer for pure structural change model
 #'
-#'Function computes break points that globally minimizes SSR via dynamic programming approach.
+#'`dating()` computes break points that globally minimizes SSR via dynamic programming approach.
 #'To avoid recursion depth increases as number of breaks in the model increases, a temporary
 #'array is used to store optimal partition with corresponding SSR for all permissible
-#'subsamples for all 1:m-1 breaks. For m breaks, the problem became finding where to insert
-#'the last feasible segments into a subsample to obtain minimum SSR for 1 to T
+#'subsamples for all 1:m-1 breaks. For the m-th break, the problem becomes finding where to insert
+#'the last feasible m+1-th segment into the sample partitioned by m-1 breaks
+#'to obtain minimum SSR over the sample
 #'
-#'@param y dependent variable
-#'@param z matrix of independent variables
+#'@param y matrix of dependent variable
+#'@param z matrix of regressors with coefficients
+#' allowed to change across regimes
 #'@param h minimum length of segment
 #'@param m maximum number of breaks
-#'@param q number of regressors z
+#'@param q number of `z` regressors
 #'@param bigT sample period T
+#'
 #'@return A list containing the following components:
 #'\item{glb}{minimum global SSR}
 #'\item{datevec}{Vector of dates (optimal minimizers)}
 #'\item{bigvec}{Associated SSRs}
+#'
 #'@export
 dating = function(y,z,h,m,q,bigT){
-  ####
-  #
-  # ************
-  # glb = min global SSR
-  # datevec = vector of optimal dates
-  # bigvec =  associated SSRs
-  ###
 
   #initialize arrays to store results
   datevec = matrix(0L, nrow = m, ncol = m)
@@ -308,32 +308,41 @@ dating = function(y,z,h,m,q,bigT){
   return (out)
 }
 
-#'Non-linear dating procedure
+#'Computation of global minimizer for partial structural change model
 #'
-#'Function computes the break dates of a partial structural change model
-#'with pre-specified number of breaks m. The procedure is iterations of
-#'recursive computations of SSR and finding the m optimal global minimizers. The idea is similar
-#'to pure structural break case, with iteration to convergence to solve 2 sets
-#'of parameters.
+#'`nldat()` computes the break dates of a partial structural change model
+#'for a pre-specified number of breaks `m`. The procedure iterates between
+#'estimating the invariant and changing coefficients of `x` and `z` regressors
+#'until convergence, by noting that the residuals from linear regression model between
+#'`y` and `x` regressors is a pure structural change model,
+#' while the residuals from pure structural change model between `y` and `z` regressors
+#' is a linear regression
 #'
-#'@param y time-series observations of dependent variable
+#'@param y dependent variable in matrix form
 #'@param z matrix of regressors which coefficients are allowed to change across regimes
 #'@param x matrix of regressors which coefficients are constant across regime
-#'@param p number of \code{z} regressors
-#'@param q number of \code{x} regressors
+#'@param h minimum segment length
+#'@param m number of breaks
+#'@param p number of `z` regressors
+#'@param q number of `x` regressors
 #'@param bigT the sample size T
 #'@param fixb option to use initial \eqn{\beta} If \code{1}, procedure requires \code{betaini}.
 #'If \code{0}, procedure will not use initial beta values
 #'@param betaini initial beta values. Required when use with option \code{fixb}
-#'@param eps Convergence criterion
+#'@param eps Convergence criterion (For partial change model ONLY)
+#'@param maxi Maximum number of iterations (For partial change model ONLY)
 #'@param printd option to print output from iterated estimations. If \code{1}, the results
 #'for each iteration will be printed in console log. If \code{0}, no output will be printed
 #'@return A list containing the following components:
 #'\item{glb}{minimum global SSR}
 #'\item{datevec}{Vector of dates (optimal minimizers)}
 #'\item{bigvec}{Associated SSRs}
-#'@references
+#'@references Bai J, Perron P (1998). \emph{"Estimating and Testing Linear Models with Multiple Structural
+#'Changes"} Econometrica, 66, 47-78.
+#'Bai J, Perron P (2003). \emph{"Computation and Analysis of Multiple Structural Change Models"}
+#'Journal of Applied Econometrics 18, 1-22
 #'@export
+
 nldat = function(y,z,x,h,m,p,q,bigT,fixb,eps,maxi,betaini,printd){
 
   #initialize storage
@@ -378,6 +387,7 @@ nldat = function(y,z,x,h,m,p,q,bigT,fixb,eps,maxi,betaini,printd){
         print(date)}
     }
     else {
+      check_beta0(betaini,p)
       beta1 = betaini
       ssr1 = -5
     }
@@ -432,8 +442,44 @@ nldat = function(y,z,x,h,m,p,q,bigT,fixb,eps,maxi,betaini,printd){
 }
 
 
-#' sequential procedure to obtain number of breaks and break dates
-#' @references
+#' Sequential procedure to obtain number of breaks and break dates
+#'
+#' `sequa()` compute the sequential Ftest(l+1|l) statistics and estimate the
+#' corresponding break date based on the decision rule explained in Bai and Perron, 1998
+#'
+#' @param y dependent variable in matrix form
+#' @param z matrix of regressors which coefficients are allowed to change across regimes
+#' @param x matrix of regressors which coefficients are constant across regime
+#' @param h minimum segment length
+#' @param m number of breaks
+#' @param p number of `z` regressors
+#' @param q number of `x` regressors
+#' @param bigT sample size T
+#' @param signif significant level used in hypothesis test for decision
+#' rule regarding continuation of estimating next break:
+#' * 1: 10% significance level
+#' * 2: 5% significance level
+#' * 3: 2.5% significance level
+#' * 4: 1% significance level
+#' @param eps1 trimming level: `{0.05,0.10,0.15,0.20,0.25}`
+#' @param q number of `z` regressors with changing coefficients across regimes
+#' @param prewhit prewhitening procedure proposed by Andrews and Monahan (1992), that
+#' is, a VAR(1) filter applied to wt*ut, where ut is regression residuals and the HAC
+#' covariance matrix estimator is constructed based on the filtered series and the AR1
+#' coefficient estimate are parametrically accounted for. The default value is 1.
+#' @param robust allows heteroskedasticity and autocorrelation in estimated residual by using the HAC co-
+#' variance matrix estimator in which the Quadratic Spectral kernel is used with the
+#' bandwidth selected via the AR(1) approximation proposed by Andrews (1991). Default value is 1
+#' @param hetvar allows for the variance of errors to be different across the segments
+#' determined by the estimated breaks dates when constructing the F test statistics. If
+#' set hetvar=0, the errors are assumed to have the same variance across the segments.
+#' The default value is hetvar=1 (Note that hetvar=0 is not allowed when robust=1)
+#' @param hetdat allows for the second moment matrices of wt to be di¤erent across the segments when constructing the F test. If you set hetdat=0,
+#' wt is assumed to have the same second moment matrix across the segments. The default value is hetdat=1.
+#' @references Bai J, Perron P (1998). \emph{"Estimating and Testing Linear Models with Multiple Structural
+#' Changes"} Econometrica, 66, 47-78.
+#' @noRd
+
 sequa = function(m,signif,q,h,bigT,robust,prewhit,z,y,x,p,hetdat,hetvar,eps1){
 
   dv = matrix(0L, nrow = m+2, ncol = 1)
@@ -540,7 +586,21 @@ sequa = function(m,signif,q,h,bigT,robust,prewhit,z,y,x,p,hetdat,hetvar,eps1){
   out = list('nbreak' = nbreak, 'dv0' = dv0)
 }
 
-#' prepartion procedure
+#' Prepartion procedure
+#'
+#' `preparti()`
+#'
+#' @param y matrix of dependent variable
+#' @param z matrix of `z` regressors with coefficients are allowed to change across regimes
+#' @param nbreak number of break dates
+#' @param dateseq vector of break date
+#' @param h minimum segment length
+#' @param x matrix of `x` regressors with coefficients do not change across regimes
+#' @param p number of `x` regressors
+#'
+#' @return matrix of SSR corresponding to partitioned date
+#'
+#' @noRd
 #'
 
 preparti = function(y,z,nbreak,dateseq,h,x,p) {

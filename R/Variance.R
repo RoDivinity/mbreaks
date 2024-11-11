@@ -6,11 +6,11 @@
 
 #' Long-run covariance matrix computation
 #'
-#' The procedure to compute the long run covariance matrix \code{jhat} based
-#' on variance matrix \code{vmat}
-#'
+#' `jhatpr()` computes the long run covariance matrix based
+#' on estimated variance matrix `vmat`
 #' @param vmat variance matrix
 #' @return jhat Long run covariance matrix
+#' @noRd
 
 jhatpr = function(vmat) {
   nt = dim(vmat)[1]
@@ -42,13 +42,16 @@ jhatpr = function(vmat) {
   return(jhat)
 }
 
-#' Heteroskedasticy and autocorrelation consistency correction
+#' Heteroskedasticy and autocorrelation consistency correction for residuals
 #'
-#'function corrects the standard errors based on options of prewhitening
-#'using a AR(1) process estimation of error terms to obtain HAC errors/
+#'
+#'`hac()` corrects the estimated errors based on options of prewhitening
+#'using a AR(1) process estimation of error terms to obtain
+#'heteroskedasticy and autocorrelation consistency (HAC) errors with automatic
+#'bandwith and kernel similar to Andrews, 1994
 #'
 #'@param reg matrix of regressors
-#'@param res residuals
+#'@param res matrix of estimated residuals
 #'@param prewhit Option of using prewhitening process. If \code{1}, an AR(1)
 #'process will be used to filter. If \code{0}, skipped the filtering process
 #'@return hac Heteroskedasticy and autocorrelation consistent errors
@@ -90,12 +93,14 @@ correct = function (reg,res,prewhit){
 
   return (hac)
 }
-#' Covariance matrix of estimator delta construction
+#' Covariance matrix of estimator delta
+#'
+#' `pvdel()` constructs the covariance matrix of delta defined in Bai and Perron, 1998
 #'
 #'@param y dependent variable
 #'@param z matrix of independent variables with coefficients allowed to change
 #'across regimes
-#'@param x atrix of independent variables with constant coefficients
+#'@param x matrix of independent variables with constant coefficients
 #'across regimes
 #'@param q number of regressors \code{z}
 #'@param p number x regressors
@@ -105,8 +110,9 @@ correct = function (reg,res,prewhit){
 #'@param prewhit Option of using prewhitening process. If \code{1}, an AR(1)
 #'process will be used to filter. If \code{0}, skipped the filtering process
 #'@param robust,withb,hetdat,hetvar options for assumptions of error terms
-#'structure
+#'structure. For more details, refer to [mdl()]
 #'@return vdel Covariance matrix of delta
+#'@noRd
 
 pvdel = function(y,z,i,q,bigT,b,prewhit,robust,x,p,withb,hetdat,hetvar) {
 
@@ -126,14 +132,12 @@ pvdel = function(y,z,i,q,bigT,b,prewhit,robust,x,p,withb,hetdat,hetvar) {
     else {reg = cbind(x,zbar)}
   }
 
-
   if (robust == 0) {
     #testing with no serial correlation in errors
     if(p==0) {
       if (hetdat==1 && hetvar == 0){
         sig = t(res) %*% res / bigT
         vdel = drop(sig) * solve(t(reg) %*% reg)
-
       }
       if (hetdat == 1 && hetvar == 1){
         sig = psigmq(res,b,q,i,bigT)
@@ -152,7 +156,7 @@ pvdel = function(y,z,i,q,bigT,b,prewhit,robust,x,p,withb,hetdat,hetvar) {
     }
     else {
       if (hetdat == 0) {
-        print(paste('hetdat == 0 is not allowed','vdel is returned zeros'))
+        warning('Assuming robust errors, hetdat = 0 is not allowed; vdel is returned zeros')
         vdel = matrix (0L, nrow = q*(i+1), ncol = q*(i+1))
       }
       if (hetdat == 1 && hetvar == 0) {
@@ -178,7 +182,7 @@ pvdel = function(y,z,i,q,bigT,b,prewhit,robust,x,p,withb,hetdat,hetvar) {
   else {
     #testing with serial correlation in errors
     if(hetdat == 0) {
-      print(paste('hetdat = 0 is not allowed','vdel is returned zeros'))
+      warning('Assuming robust errors, hetdat = 0 is not allowed; vdel is returned zeros')
       vdel = matrix(0L,nrow = q*(i+1),ncol = q*(i+1))
     }
 
@@ -203,7 +207,6 @@ pvdel = function(y,z,i,q,bigT,b,prewhit,robust,x,p,withb,hetdat,hetvar) {
         hac[ind_hac,ind_hac] = (bigT - b[i,1]) * temp
         vdel = solve(t(reg) %*% reg) %*% hac %*% solve(t(reg) %*% reg)
       }
-
       else {
         hac = correct(z,res,prewhit)
         lambda = plambda(b,i,bigT)
@@ -219,37 +222,38 @@ pvdel = function(y,z,i,q,bigT,b,prewhit,robust,x,p,withb,hetdat,hetvar) {
   return(vdel)
 }
 
-#' Break interval
-#' Function computes confidence intervals for the break dates
+#' Estimatd break confidence interval
 #'
-#' Function to compute confidence intervals for the break dates based on
+#' `interval()` computes confidence intervals for the break dates based on
+#' approximating the limiting distribution of the break date following
 #' the "shrinking shifts" asymptotic framework
-#'@param y dependent variable
+#'
+#'@param y matrix of dependent variable
 #'@param z matrix of independent variables with coefficients allowed to change
 #'across regimes
 #'@param zbar partitioned matrix of independent variables with coefficients allowed
-#'to change across regimes according to break date
+#'to change across regimes according to break date vector `b`
 #'@param x matrix of independent variables with coefficients constant
 #'across regimes
-#'@param q number of regressors \code{z}
-#'@param p number x regressors
+#'@param q number of `z` regressors
+#'@param p number of `x` regressors
 #'@param m maximum number of breaks
-#'@param bigT sample period T
-#'@param b vector of estimated dates of breaks
+#'@param b vector of break breaks
 #'@param prewhit Option of using prewhitening process. If \code{1}, an AR(1)
 #'process will be used to filter. If \code{0}, skipped the filtering process
-#'@param robust,withb,hetdat,hetvar options for assumptions of error terms
-#'structure
-#'@return bound Confidence intervals of break date in \code{90%} and \code{95%}
+#' @param robust set to \code{1} to allow for heterogeneity
+#' and autocorrelation in the residuals, \code{0} otherwise.
+#' The method used is Andrews(1991) automatic bandwidth with AR(1) approximation with quadratic
+#' kernel. Note: Do not set to \code{1} if lagged dependent variables are
+#' included as regressors.
+#'@param hetomega,hetq options for assumptions of error terms
+#'structure. For more details, refers to [mdl()]
+#'
+#'@return bound Confidence intervals of break date in \code{90\%} and \code{95\%}
 #'significant level
 #'@export
 
 interval = function(y,z,zbar,b,q,m,robust,prewhit,hetomega,hetq,x,p){
-  ######
-  #
-  ##
-  # bound = CIs for break dates
-  #####
 
   cvf = matrix(0L,nrow = 4, ncol = 1)
   nt = dim(z)[1]

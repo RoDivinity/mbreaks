@@ -2,10 +2,29 @@
 % Please edit documentation in R/Procedures.R
 \name{plot_model}
 \alias{plot_model}
-\title{new plot function for class model}
+\title{Plot structural change model}
 \usage{
 plot_model(model, CI = 0.95, title = NULL)
 }
+\arguments{
+\item{model}{object of class `model` in `mbreaks` package}
+
+\item{CI}{confidence intervals for break date and coefficient estimates visualize in terms of
+fitted values}
+
+\item{title}{title of the graph}
+}
+\value{
+No return value, called for plotting class `model` object. For more details
+on `model` class, see [compile_model]
+}
 \description{
-new plot function for class model
+`plot_model()` visualizes any object of class `model` with comparison between real,
+fitted values between  model of `m` breaks and null model of `0` breaks with options
+for confidence interval of break date.
+}
+\examples{
+rate = dofix('rate',data=real,fixn=2)
+plot_model(rate,title='Ex-post US exchange rate')
+
 }

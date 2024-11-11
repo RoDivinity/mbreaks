@@ -2,44 +2,48 @@
 % Please edit documentation in R/Variance.R
 \name{interval}
 \alias{interval}
-\title{Break interval
-Function computes confidence intervals for the break dates}
+\title{Estimatd break confidence interval}
 \usage{
 interval(y, z, zbar, b, q, m, robust, prewhit, hetomega, hetq, x, p)
 }
 \arguments{
-\item{y}{dependent variable}
+\item{y}{matrix of dependent variable}
 
 \item{z}{matrix of independent variables with coefficients allowed to change
 across regimes}
 
 \item{zbar}{partitioned matrix of independent variables with coefficients allowed
-to change across regimes according to break date}
+to change across regimes according to break date vector `b`}
 
-\item{b}{vector of estimated dates of breaks}
+\item{b}{vector of break breaks}
 
-\item{q}{number of regressors \code{z}}
+\item{q}{number of `z` regressors}
 
 \item{m}{maximum number of breaks}
 
-\item{robust, withb, hetdat, hetvar}{options for assumptions of error terms
-structure}
+\item{robust}{set to \code{1} to allow for heterogeneity
+and autocorrelation in the residuals, \code{0} otherwise.
+The method used is Andrews(1991) automatic bandwidth with AR(1) approximation with quadratic
+kernel. Note: Do not set to \code{1} if lagged dependent variables are
+included as regressors.}
 
 \item{prewhit}{Option of using prewhitening process. If \code{1}, an AR(1)
 process will be used to filter. If \code{0}, skipped the filtering process}
 
+\item{hetomega, hetq}{options for assumptions of error terms
+structure. For more details, refers to [mdl()]}
+
 \item{x}{matrix of independent variables with coefficients constant
 across regimes}
 
-\item{p}{number x regressors}
-
-\item{bigT}{sample period T}
+\item{p}{number of `x` regressors}
 }
 \value{
 bound Confidence intervals of break date in \code{90\%} and \code{95\%}
 significant level
 }
 \description{
-Function to compute confidence intervals for the break dates based on
+`interval()` computes confidence intervals for the break dates based on
+approximating the limiting distribution of the break date following
 the "shrinking shifts" asymptotic framework
 }

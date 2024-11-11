@@ -2,14 +2,15 @@
 
 ###### Matrix auxiliary functions (only available in MATLAB) ######
 #' Function to calculate power of a matrix
-#'  @noRd
+#' @param A matrix
+#' @param t power level
+#'
+#' @examples
+#' A = matrix(c(1:10),5,2)
+#' mpower(A,3)
+#'
+#' @noRd
 mpower = function(A,t){
-  ####
-  # A = input matrix
-  # t = exponent
-  # ****
-  # out = A^t
-  ####
   B = A
   if (t == 1) {return(B)}
   else{for (i in 2:t) {B = B %*% A}}
@@ -19,13 +20,14 @@ mpower = function(A,t){
 
 #' Rotate a matrix
 #'
-#'Function rotate sa matrix 90 degree counterclockwise
-#'@author Linh Nguyen
+#'Function rotate a matrix 90 degree counterclockwise
+#'
 #'@param A matrix to be rotated 90 degree counterclockwise
 #'@return B: rotated matrix A
 #'@examples
 #'A = matrix(c(1:10),5,2)
 #'rot90(A)
+#'
 #' @noRd
 
 rot90 = function(A){
@@ -45,7 +47,6 @@ rot90 = function(A){
 #'
 #'Function computes Kronecker Tensor Product between matrix A and matrix B
 #'
-#'@author Linh Nguyen
 #'@param A Matrix A
 #'@param B Matrix B
 #'@return out: Kronecker Tensor Product of A (X) B
@@ -53,13 +54,9 @@ rot90 = function(A){
 #'A = matrix(c(1,2),1,2)
 #'B = matrix(c(1:4),2,2)
 #'kron(A,B)
+#'
 #'@noRd
 kron = function(A,B){
-  ###
-  # A,B = m x n matrix A & p x q matrix B
-  # ****
-  # out = A (x) B
-  ###
   rA = dim(A)[1]
   cA = dim(A)[2]
   rB = dim(B)[1]
@@ -79,14 +76,13 @@ kron = function(A,B){
 
 #'Diagonal partition given break dates
 #'
-#' Function constructs the matrix of regressors z which coefficients are changed
-#' on the estimated break dates
-#'
+#' `diag_par()` partition the matrix of `z` regressors which coefficients are changed
+#' based on the provided break dates
 #'
 #'@param input matrix of independent variables z with coefficients allowed to
 #'change overtime
 #'@param m number of breaks in the series
-#'@param date vector of estimated break dates
+#'@param date vector of break dates
 #'@examples
 #' z = matrix(c(1:100),50,2)
 #' m = 2  #2 breaks
@@ -123,7 +119,7 @@ diag_par = function(input,m,date) {
 #' OLS regression in matrix form
 #'
 #' Function computes OLS estimates of the regression y on x
-#' in matrix form, \eqn{\beta = (X'X)^{-1} X'Y}
+#' in matrix form, (X'X)^{-1} X'Y
 #'
 #'@param y matrix of dependent variables
 #'@param x matrix of independent variables
@@ -139,7 +135,7 @@ OLS = function(y,x) {
 
 #' SSR computation
 #'
-#' Function computes Sum of Squared Residuals based on OLS estimates, \eqn{\beta}
+#' `nssr()` computes the sum of squared Residuals based on OLS estimates
 #'
 #'@param y matrix of dependent variables
 #'@param zz matrix of independent variables
@@ -162,7 +158,7 @@ nssr = function(y,zz) {
 #'@param y dependent vars
 #'@param z matrix of time-variant regressors (dimension q)
 #'@param h minimal length of segment
-#'@return out The vector of recursive SSR of length (last-start+1)
+#'@return out: The vector of recursive SSR of length (last-start+1)
 #'@noRd
 ssr = function(start,y,z,h,last) {
   out = matrix(0L,nrow = last, ncol = 1)
@@ -203,15 +199,12 @@ ssr = function(start,y,z,h,last) {
 #'
 #'@param vhat Estimated variance
 #'@return st Bandwidth-corrected variance
-#'@references
 #'@noRd
 bandw = function(vhat) {
   nt = dim(vhat)[1]
   d = dim(vhat)[2]
-
   a2n = 0
   a2d = 0
-
   for (i in seq(1,d,1)){
     y = vhat[seq(2,nt,1),i,drop=FALSE]
     dy = vhat[seq(1,nt-1,1),i,drop=FALSE]
@@ -285,8 +278,9 @@ plambda = function(b,m,bigT) {
 #'@param res big residual vector of the model
 #'@param b Estimated date of changes
 #'@param m Number of breaks
-#'@param nt The sample size
-#'@return sigmat (i+1)x(i+1) diagonal matrix with i-th entry
+#'@param nt The size of `z` regressors
+#'@param q Number of `z` regressors
+#'@return sigmat (`m`+1)x(`m`+1) diagonal matrix with i-th entry
 #'equal to estimated variance of regime i
 #'
 psigmq = function (res,b,q,m,nt) {
@@ -299,7 +293,7 @@ psigmq = function (res,b,q,m,nt) {
   while (kk <= m) {
     bf = b[kk-1,1]
     bl = b[kk,1]
-    resid_temp = res[seq(bf,bl,1),1]
+    resid_temp = res[seq(bf,bl,1),1,drop=FALSE]
     sigmat[kk,kk] = t(resid_temp) %*% resid_temp / (bl - bf)
     kk = kk+1
   }
@@ -310,18 +304,23 @@ psigmq = function (res,b,q,m,nt) {
   return(sigmat)
 }
 
-######## Auxiliary Computation Functions for Statistical Inference #######
-#'Calculate p-value
+######## Auxiliary Computational Functions for Statistical Inference #######
+#' Limiting distribution of a single break
 #'
-#'Function computes the p-value of the test
+#'`funcg()` computes the density function in the limit of W^(i)(x) proposed by Bai and Perron, 1998
+#' with the density function
+#'
+#' @references Bai J, Perron P (1998). \emph{"Estimating and Testing Linear Models with Multiple Structural
+#' Changes"} Econometrica, 66, 47-78.
+#' Yao YC (1988). \emph{"Estimating the Number of Change-points via Schwartz Criterion},
+#' Statistics and Probability Letters, 6, 181-189.
+#'
 #'@importFrom stats pnorm
-#'@param x
-#'@param bet
-#'@param alph
-#'@param b
-#'@param deld
-#'@param gam
+#'@param x value at evaluation for limiting distribution
+#'@param bet,alpha,b,deld,gam parameters in density function of break date limit distribution
+#' (see [cvg()] for more details)
 #'@return g The p-value
+#'@noRd
 funcg = function (x,bet,alph,b,deld,gam){
   #g = pval
 
@@ -347,7 +346,6 @@ funcg = function (x,bet,alph,b,deld,gam){
         (2-b*b*x/2-2*deld*deld/gam)*pnorm(-b*sqrt(x)/2);
     }
     else{
-
       aa=log((b*deld/gam))+gam*x-xb^2/2-log(sqrt(2*pi))-log(xb);
       g=1+(b/sqrt(2*pi))*sqrt(x)*exp(-b*b*x/8)+
         exp(aa)+(2-b*b*x/2-2*deld*deld/gam)*pnorm(-b*sqrt(x)/2);
@@ -358,12 +356,14 @@ funcg = function (x,bet,alph,b,deld,gam){
 
 #'Critical values computation
 #'
-#'Function calculates the critical values for break date
+#'`cvg()` calculates the critical values for break date
 #'
-#'@param eta
-#'@param phi1s
-#'@param phi2s
+#'@param eta: coefficient estimates
+#'@param phi1s: estimated sandwiched variance of current regime
+#'@param phi2s: estimate sandwiched variance of next regime
+#'
 #'@return cvec Critical values of break dates
+#'@noRd
 
 cvg = function(eta,phi1s,phi2s){
   cvec = matrix(0L,nrow = 4, ncol = 1)
@@ -386,7 +386,7 @@ cvg = function(eta,phi1s,phi2s){
     while(abs(crit) >= 0.000001) {
       cct = cct + 1
       if (cct > 100){
-        cat('the procedure to get critical values for the break dates has reached the upper bound on the number of iterations. This may happens in the procedure cvg. The resulting confidence interval for this break date is incorect')
+        warning('the procedure to get critical values for the break dates has reached the upper bound on the number of iterations. This may happens in the procedure cvg. The resulting confidence interval for this break date is incorect')
         break
       }
       else{
@@ -411,15 +411,18 @@ cvg = function(eta,phi1s,phi2s){
 #'Function to retrieve critical values of supF test stored in
 #'/SysData/SupF/cv_{x}.csv where \code{x} corresponds to the trimming level:
 #'\itemize{
-#'\item{1: \code{eps1} = 5%}
-#'\item{2: \code{eps1} = 10%}
-#'\item{3: \code{eps1} = 15%}
-#'\item{4: \code{eps1} = 20%}
-#'\item{5: \code{eps1} = 25%}}
-#'The critical values are tabulated from @references
+#'\item 1 set \code{eps1} = 5\%
+#'\item 2 set \code{eps1} = 10\%
+#'\item 3 set \code{eps1} = 15\%
+#'\item 4 set \code{eps1} = 20\%
+#'\item 5 set\code{eps1} = 25\%
+#'}
+#'The critical values are tabulated from @references Perron and Bai, 1994
 #'@param signif significant level
 #'@param eps1 trimming level
 #'@return cv Critical value of SupF test
+#'
+#'@noRd
 getcv1 = function(signif,eps1){
   if(eps1 == .05){
     out = supFcv1
@@ -456,15 +459,17 @@ getcv1 = function(signif,eps1){
 #'Function to retrieve critical values of SupF(l+1|l) test stored in
 #'/SysData/SupF_next/cv_{x}.csv where \code{x} corresponds to the trimming level:
 #'\itemize{
-#'\item{1: \code{eps1} = 5%}
-#'\item{2: \code{eps1} = 10%}
-#'\item{3: \code{eps1} = 15%}
-#'\item{4: \code{eps1} = 20%}
-#'\item{5: \code{eps1} = 25%}}
+#'\item 1 set \code{eps1} = 5\%
+#'\item 2 set \code{eps1} = 10\%
+#'\item 3 set \code{eps1} = 15\%
+#'\item 4 set \code{eps1} = 20\%
+#'\item 5 set\code{eps1} = 25\%
+#'}
 #'The critical values are tabulated from @references
 #'@param signif significant level
 #'@param eps1 trimming level
 #'@return cv Critical value of SupF(l+1|l) test
+#'@noRd
 getcv2 = function(signif,eps1){
   if(eps1 == .05){
     out = supF_next_cv1
@@ -501,15 +506,17 @@ getcv2 = function(signif,eps1){
 #'Function to retrieve critical values of supF test stored in
 #'/SysData/Dmax/cv_{x}.csv where \code{x} corresponds to the trimming level:
 #'\itemize{
-#'\item{1: \code{eps1} = 5%}
-#'\item{2: \code{eps1} = 10%}
-#'\item{3: \code{eps1} = 15%}
-#'\item{4: \code{eps1} = 20%}
-#'\item{5: \code{eps1} = 25%}}
+#'\item 1 set \code{eps1} = 5\%
+#'\item 2 set \code{eps1} = 10\%
+#'\item 3 set \code{eps1} = 15\%
+#'\item 4 set \code{eps1} = 20\%
+#'\item 5 set\code{eps1} = 25\%
+#'}
 #'The critical values are tabulated from @references
 #'
 #'@param signif significant level
 #'@param eps1 trimming level
+#'
 #'@return cv Critical value of SupF test
 #'@noRd
 getdmax = function(signif,eps1){
@@ -546,9 +553,11 @@ getdmax = function(signif,eps1){
 
 
 #' function to process data before invoking procedures
-#' @param y_name
-#' @param z_name
-#' @param x_name
+#' @param y_name: name of dependent variable
+#' @param z_name: name of regressors with regime-varying coefficients
+#' @param x_name: name of regressors with invariant coefficients
+#' @param data: dataframe used
+#' @param const: if the regression included a constant
 #' @noRd
 process_data = function(y_name,z_name = NULL,x_name = NULL,data,const){
   #handle data
@@ -556,20 +565,19 @@ process_data = function(y_name,z_name = NULL,x_name = NULL,data,const){
   x_ind = match(x_name,colnames(data))
   z_ind = match(z_name,colnames(data))
 
-  if(is.na(y_ind)){
-    stop('No matching dependent variable y. Please try again')
-    }
+  if(is.na(y_ind)){stop('No matching dependent variable y. Please try again')}
   else{
   y = data[,y_ind]
   y = data.matrix(y)
   T = dim(y)[1]
 
-
+  #check availability of x variables
   if (is.null(x_name)) {x = c()}
   else{
-    if(anyNA(x_ind)){stop('No x regressors found. Please try again')
-     }
+    if(anyNA(x_ind)){stop('No x regressors found. Please try again')}
     else{x = data.matrix(data[,x_ind,drop=FALSE])}}
+
+  #check availability of z variables
   if (is.null(z_name)) {
     if (const == 1) {z = matrix(1L,T,1)}
     else {stop('No regressors in the model. Please specify at least 1 regressors')}
@@ -578,11 +586,11 @@ process_data = function(y_name,z_name = NULL,x_name = NULL,data,const){
     if(anyNA(z_ind)){stop('No z regressors found. Please try again')}
     else{
       if (const == 1){
+        z_name = c('Const',z_name)
         z = data.matrix(data[,z_ind,drop=FALSE])
         z = cbind(matrix(1L,T,1),z)}
-      else{
-        z = data.matrix(data[,z_ind,drop=FALSE])
-      }}}
+      else{z = data.matrix(data[,z_ind,drop=FALSE])}
+}}
   out = list();
   #store y,x,z name and corresponding x,y and z data
   out$y_name = y_name
@@ -591,45 +599,156 @@ process_data = function(y_name,z_name = NULL,x_name = NULL,data,const){
   out$y = y
   out$z = z
   out$x = x
+  if(length(dim(x))==0){p = 0}
+  else{p = dim(x)[2]}
+  q = dim(z)[2]
+  out$p = p
+  out$q = q
   }
 
   return(out)
 }
 
-#' function to check validity of maximum number of breaks before invoking procedures
+#' function to check validity of maximum number of breaks
+#' without estimation
+#'
 #' @param bigT sample size
 #' @param eps1 trimming level
-#' @param m input m
+#' @param m number of breaks input
+#' @param h minimum segment length input
+#' @param p number of `x` regressors
+#' @param q number of `q` regressors
 #' @noRd
-check_m = function(bigT,eps1,m){
-  h = round(eps1*bigT)
-  upper_m = floor(bigT/h)-1
-  if(m>upper_m){
-    warning(paste('Not enough observations for',m+1,'segments with minimum length per segment =',
-                  h,'.The total required observations for such',m,'breaks would be ',(m+1)*h,'>T=',bigT,'\n'))
-    message(paste('Set m to',upper_m,'\n'))
-    m=upper_m
-  }
-
-  if (m<=0){
-    warning('Maximum number of breaks cannot be less than 1')
-    message(paste('Set m to',upper_m,'\n'))
-    m=upper_m
-  }
-  return(m)
-}
-
-#' function to check validity of maximum number of breaks before invoking procedures
-#' @param bigT sample size
-#' @param eps1 trimming level
-#' @param m input m
-#' @noRd
-
-check_trimming = function(eps1){
+check_trimming = function(bigT,eps1,m,h,p,q){
+  #conditions for output
+  out=list()
+  #trimming level available
   v_eps1 = c(0.05,0.10,0.15,0.20,0.25)
-if(!eps1 %in% v_eps1){
-  warning('Invalid trimming level, set trimming level to 15%. Only allowed for 5%,10%,15%,20% and 25%')
-  eps1 = 0.15
+  m = round(m)
+  if (m<=0){stop(paste('Maximum number of breaks cannot be less than 1.'))}
+  if (eps1 == 0){
+    h = check_h_estim(bigT,m,h,p+q)
+  }else{
+    if (!eps1 %in% v_eps1){
+      warning('Invalid trimming level, set trimming level to 15%. Only allowed for 0%, 5%,10%,15%,20% and 25%')
+      eps1 = 0.15
+      h = floor(eps1*bigT)
+    }
+    h = floor(eps1*bigT)
+  }
+
+  if (h <= 4){
+    message('The minimum segment length is too small, results in singular covariance matrix. Searching for appropriate h')
+    if (eps1!=0){
+      temp_h = 5 #temporary minimum segment possible
+      avail_h = bigT*v_eps1
+      if (temp_h > max(avail_h)){
+        stop('Not enough observations for any available trimming level')
+      }
+      else{
+        if (temp_h >= avail_h[3]){
+        message('Set trimming level to 15%')
+        eps1 = v_eps1[3]
+        h = floor(avail_h[3])
+      }
+        else if (temp_h >= avail_h[4]){
+        message('Set trimming level to 20%')
+        eps1 = v_eps1[4]
+        h = floor(avail_h[4])
+      }
+        else{
+        message('Set trimming level to 25%')
+        eps1 = v_eps1[5]
+        h = floor(avail_h[5])
+      }
+      }
+    }
+    else{
+      #only need minimum working h
+      h = 5
+    }
+  }
+
+
+  upper_m = floor(bigT/h)-1
+
+  if (upper_m <= 0){
+    stop(paste('Not enough observations for trimming level=',eps1,'and minimum segment length h=',h))
+  }
+
+  if(m>upper_m){
+    warning(paste('Not enough observations for ',m+1,' segments with minimum length per segment =',
+                  h,'.The total required observations for such',m,
+                  'breaks would be ',(m+1)*h,'>T=',bigT,'\n.'))
+    message(paste('Set m to',upper_m,'\n'))
+    m=upper_m
+  }
+  #finalize h,m and eps1
+  out$h = h
+  out$eps1 = eps1
+  out$m = m
+  return(out)
 }
-  return(eps1)}
+
+#' function to check validity of maximum number of breaks
+#' for estimation only
+#'
+#' @param bigT sample size
+#' @param m number of breaks input
+#' @param h minimum segment length input
+#' @param numreg number of `x` and `z` regressors
+#' @noRd
+
+check_h_estim = function(bigT,m,h,numreg){
+    #message('Setting eps1 = 0 is for estimation only, not available for testing')
+    if (is.null(h)){
+      stop('Need to specify h when setting this option to estimation only')
+    }
+    if (h < numreg){
+      message('Not enough observations in minimum segment for number of regressors. Set to 15% sample size')
+      h = max(floor(0.15*bigT),numreg)
+    }
+    if ((m+1)*h>bigT){
+      message('Not enough observations for number of breaks considered. Set to match number of breaks')
+      h = max(floor(bigT/(m+1)),5);
+    }
+    h=round(h);
+  return(h)
+}
+
+
+#' function to check validity of user specified coefficients for partial structural change
+#' @param betaini user input coefficient estimates of full sample regressors
+#' @param p number of full sample regressors
+#' @noRd
+check_beta0 = function(betaini,p){
+  if (!is.matrix(betaini)){
+    stop('The initial estimates for full sample regressors are not in matrix form. Please specify beta0 in a p by 1 matrix')
+  }
+  if (dim(betaini)[1]!=p){
+    stop('The initial estimates for full sample regressors are different from number of full sample regressors. Please specify beta0 in a p by 1 matrix')
+  }
+  return(betaini)
+}
+
+#' function to check if there are duplicates regressors in both p and q regressors
+#' @param x matrix of regressors with constant coefficients
+#' @param z matrix of regressors with changing coefficients
+#' @noRd
+
+check_duplicate = function(z,x,z_name,x_name){
+  name_all = c(z_name,x_name)
+  all = cbind(z,x)
+  if(any(duplicated(all,MARGIN=2))){
+    index = which(duplicated(all,MARGIN=2));
+    string_dup = ''
+    for (i in index){
+      string_dup = paste(string_dup,name_all[i])
+    }
+    stop(paste('There are duplicate regressors in both x and z regressors.'))
+  }
+}
+
+
+
 

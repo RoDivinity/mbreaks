@@ -2,10 +2,26 @@
 % Please edit documentation in R/Procedures.R
 \name{print.seqtests}
 \alias{print.seqtests}
-\title{S3 function to print sequential tests}
+\title{Print sequential SupF tests}
 \usage{
 \method{print}{seqtests}(x, ...)
 }
+\arguments{
+\item{x}{`seqtests` class object.}
+
+\item{...}{further arguments passed to or from other methods.}
+}
+\value{
+No return value, only for printing formatted `seqtests` class object to console
+}
 \description{
-S3 function to print sequential tests
+`print` prints the object of class `seqtests` with the following information
+\itemize{
+\item Maximum number of breaks `m` in the tests
+\item `sfl` table with sequential sup F tests statistics of l versus
+l+1 breaks up to `m` breaks}
+}
+\examples{
+seq_supF = doseqtests('inf','inflag',data=nkpc)
+print(seq_supF)
 }

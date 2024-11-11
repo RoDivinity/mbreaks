@@ -2,7 +2,7 @@
 % Please edit documentation in R/Procedures.R
 \name{doorder}
 \alias{doorder}
-\title{Order estimation procedure}
+\title{Estimating number of breaks via information criterion}
 \usage{
 doorder(
   y_name,
@@ -16,16 +16,44 @@ doorder(
   fixb = 0,
   betaini = 0,
   printd = 0,
-  opt = "BIC",
-  const = 1
+  ic = "KT",
+  const = 1,
+  h = NULL,
+  prewhit = 1,
+  hetdat = 1,
+  hetq = 1,
+  hetomega = 1,
+  hetvar = 1,
+  robust = 1
 )
 }
 \arguments{
+\item{y_name}{name of dependent variable in the data set}
+
+\item{z_name}{name of independent variables in the data set which coefficients are allowed to change
+across regimes. \code{default} is vector of 1 (Mean-shift model)}
+
+\item{x_name}{name of independent variables in the data set which coefficients are constant across
+regimes. \code{default} is `NULL`}
+
+\item{data}{name of data set used}
+
 \item{m}{maximum number of breaks}
 
 \item{eps}{convergence criterion for iterative recursive computation}
 
-\item{eps1}{trimming level}
+\item{eps1}{value of trimming (in percentage) for the construction
+and critical values. Minimal segment length `h` will be set
+at \code{default} = int(\code{eps1}*T) (T is total sample size).
+There are five options:
+\itemize{
+\item `eps1=0.05` Maximal value of `m` = 10.
+\item `eps1=0.10` Maximal value of `m` = 8.
+\item `eps1=.15` Maximal value of `m` = 5.
+\item `eps1=.20` Maximal value of `m` = 3.
+\item `eps1=.25` Maximal value of `m` = 2.
+\item `eps1=0` This option allows users to explicitly specify
+minimum segment length `h` parameters}}
 
 \item{maxi}{maximum number of iterations}
 
@@ -34,23 +62,77 @@ the model will use values given in \code{betaini}. If \code{0}, betaini is skipp
 
 \item{betaini}{Initial \eqn{beta_0} to use in estimation}
 
-\item{printd}{option to print results of iterations for partial change model}
+\item{printd}{Print option for model estimation. \code{default} = 0, to
+suppress intermediate outputs printing to console}
 
-\item{y}{dependent variables in matrix form}
+\item{ic}{indicator which information criterion is used in selecting number of breaks:
+\itemize{
+\item \code{KT}
+\item \code{BIC}
+\item \code{LWZ} 
+}
+The default value is \code{KT}}
 
-\item{z}{matrix of independent variables with coefficients are allowed to change across
-regimes}
+\item{const}{indicates whether the regression model include an
+intercept changing across regimes. Default value is 1}
 
-\item{x}{matrix of independent variables with coefficients constant across regimes}
+\item{h}{Minimum segment length of regime considered in estimation. If users want to specify a particular value, please set `eps1=0`}
 
-\item{bic}{indicator which criterion is used in selecting number of breaks}
+\item{prewhit}{set to \code{1} to apply AR(1) prewhitening prior to estimating
+the long run covariance matrix.}
+
+\item{hetdat}{option for the construction of the F tests. Set to 1 if want to
+allow different moment matrices of the regressors across segments.
+If \code{hetdat} = \code{0}, the same moment matrices are assumed for each segment
+and estimated from the ful sample. It is recommended to set
+\code{hetdat}=\code{1} if number of regressors \code{x} > \code{0}.}
+
+\item{hetq}{used in the construction of the confidence intervals for the break
+dates. If \code{hetq}=\code{0}, the moment matrix of the data is assumed identical
+across segments}
+
+\item{hetomega}{used in the construction of the confidence intervals for the break
+dates. If \code{hetomega}=\code{0}, the long run covariance matrix of zu is
+assumed identical across segments
+(the variance of the errors u if \code{robust}=\code{0})}
+
+\item{hetvar}{option for the construction of the F tests.Set to \code{1}
+if users want to allow for the variance of the residuals to be different across segments.
+If \code{hetvar}=\code{0}, the variance of the residuals is assumed constant
+across segments and constructed from the full sample. \code{hetvar}=\code{1} when \code{robust} =\code{1})}
+
+\item{robust}{set to \code{1} to allow for heterogeneity
+and autocorrelation in the residuals, \code{0} otherwise.
+The method used is \emph{Andrews(1991)} automatic bandwidth with AR(1) approximation with quadratic
+kernel. Note: Do not set to \code{1} if lagged dependent variables are
+included as regressors.}
 }
 \value{
-A list that contains following:
-\item{mBIC}{number of breaks selected by BIC}
-\item{mLWZ}{number of breaks selected by LWZ}
+A list of class `model` that contains one of the following:
+\describe{
+\item{mBIC}{change model with number of breaks selected by BIC}
+\item{mLWZ}{change model with number of breaks selected by LWZ}
+\item{mKT}{change model with number of breaks selected by KT}
+}
 }
 \description{
-The function carry out the procedure to estimate order
-using BIC and the criterion of Liu, Wu and Zidek
+`doorder()` estimates the number of breaks
+ using one of the following information criteria:
+\itemize{
+ \item modified Bayesian information criterion by Kurozumi and Tuvaandorj, 2011,
+ \item modified Schwarz information criterion by Liu, Wu and Zidek, 1997,
+ \item Bayesian information criterion by Yao, 1988} 
+ and the structural break model corresponding to estimated number of breaks.
+}
+\examples{
+doorder('rate',data=real,ic=c('BIC'))
+
+}
+\references{
+Liu J, Wu S, Zidek JV (1997). \emph{"On Segmented Multivariate Regressions"},
+Statistica Sinica, 7, 497-525.
+Yao YC (1988). \emph{"Estimating the Number of Change-points via Schwartz Criterion"},
+Statistics and Probability Letters, 6, 181-189.
+Kurozumi E, Tuvaandorj P (2011). \emph{"Model Selection Criteria in Multivariate Models with
+Multiple Structural Changes"}, Journal of Econometrics 164, 218-238.
 }

@@ -2,14 +2,14 @@
 % Please edit documentation in R/Variance.R
 \name{correct}
 \alias{correct}
-\title{Heteroskedasticy and autocorrelation consistency correction}
+\title{Heteroskedasticy and autocorrelation consistency correction for residuals}
 \usage{
 correct(reg, res, prewhit)
 }
 \arguments{
 \item{reg}{matrix of regressors}
 
-\item{res}{residuals}
+\item{res}{matrix of estimated residuals}
 
 \item{prewhit}{Option of using prewhitening process. If \code{1}, an AR(1)
 process will be used to filter. If \code{0}, skipped the filtering process}
@@ -18,6 +18,8 @@ process will be used to filter. If \code{0}, skipped the filtering process}
 hac Heteroskedasticy and autocorrelation consistent errors
 }
 \description{
-function corrects the standard errors based on options of prewhitening
-using a AR(1) process estimation of error terms to obtain HAC errors/
+`hac()` corrects the estimated errors based on options of prewhitening
+using a AR(1) process estimation of error terms to obtain
+heteroskedasticy and autocorrelation consistency (HAC) errors with automatic
+bandwith and kernel similar to Andrews, 1994
 }

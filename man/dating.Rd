@@ -2,20 +2,21 @@
 % Please edit documentation in R/Estimation.R
 \name{dating}
 \alias{dating}
-\title{Calculate optimal break points for pure structural change model}
+\title{Computation of global minimizer for pure structural change model}
 \usage{
 dating(y, z, h, m, q, bigT)
 }
 \arguments{
-\item{y}{dependent variable}
+\item{y}{matrix of dependent variable}
 
-\item{z}{matrix of independent variables}
+\item{z}{matrix of regressors with coefficients
+allowed to change across regimes}
 
 \item{h}{minimum length of segment}
 
 \item{m}{maximum number of breaks}
 
-\item{q}{number of regressors z}
+\item{q}{number of `z` regressors}
 
 \item{bigT}{sample period T}
 }
@@ -26,9 +27,10 @@ A list containing the following components:
 \item{bigvec}{Associated SSRs}
 }
 \description{
-Function computes break points that globally minimizes SSR via dynamic programming approach.
+`dating()` computes break points that globally minimizes SSR via dynamic programming approach.
 To avoid recursion depth increases as number of breaks in the model increases, a temporary
 array is used to store optimal partition with corresponding SSR for all permissible
-subsamples for all 1:m-1 breaks. For m breaks, the problem became finding where to insert
-the last feasible segments into a subsample to obtain minimum SSR for 1 to T
+subsamples for all 1:m-1 breaks. For the m-th break, the problem becomes finding where to insert
+the last feasible m+1-th segment into the sample partitioned by m-1 breaks
+to obtain minimum SSR over the sample
 }

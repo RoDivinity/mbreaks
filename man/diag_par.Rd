@@ -12,14 +12,14 @@ change overtime}
 
 \item{m}{number of breaks in the series}
 
-\item{date}{vector of estimated break dates}
+\item{date}{vector of break dates}
 }
 \value{
 output: matrix of partitioned variables corresponds to break dates
 }
 \description{
-Function constructs the matrix of regressors z which coefficients are changed
-on the estimated break dates
+`diag_par()` partition the matrix of `z` regressors which coefficients are changed
+based on the provided break dates
 }
 \examples{
 z = matrix(c(1:100),50,2)

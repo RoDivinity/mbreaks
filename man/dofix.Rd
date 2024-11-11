@@ -22,13 +22,37 @@ dofix(
   hetvar = 1,
   hetq = 1,
   hetomega = 1,
-  const = 1
+  const = 1,
+  h = NULL
 )
 }
 \arguments{
+\item{y_name}{name of dependent variable in the data set}
+
+\item{z_name}{name of independent variables in the data set which coefficients are allowed to change
+across regimes. \code{default} is vector of 1 (Mean-shift model)}
+
+\item{x_name}{name of independent variables in the data set which coefficients are constant across
+regimes. \code{default} is `NULL`}
+
+\item{data}{name of data set used}
+
+\item{fixn}{number of breaks specified}
+
 \item{eps}{convergence criterion for iterative recursive computation}
 
-\item{eps1}{trimming level}
+\item{eps1}{value of trimming (in percentage) for the construction
+and critical values. Minimal segment length `h` will be set
+at \code{default} = int(\code{eps1}*T) (T is total sample size).
+\itemize{
+  \item \code{eps1 = 0.05} Maximal value of \code{m} = 10.
+  \item \code{eps1 = 0.10} Maximal value of \code{m} = 8.
+  \item \code{eps1 = 0.15} Maximal value of \code{m} = 5.
+  \item \code{eps1 = 0.20} Maximal value of \code{m} = 3.
+  \item \code{eps1 = 0.25} Maximal value of \code{m} = 2.
+  \item \code{eps1=0} This option allows users to explicitly specify
+minimum segment length `h` parameters.
+}}
 
 \item{maxi}{maximum number of iterations}
 
@@ -37,30 +61,52 @@ the model will use values given in \code{betaini}. If \code{0}, betaini is skipp
 
 \item{betaini}{Initial \eqn{beta_0} to use in estimation}
 
-\item{printd}{option to print results of iterations for partial change model}
+\item{printd}{Print option for model estimation. \code{default} = 0, to
+suppress intermediate outputs printing to console}
 
-\item{prewhit}{option to use AR(1) for prewhitening process}
+\item{prewhit}{set to \code{1} to apply AR(1) prewhitening prior to estimating
+the long run covariance matrix.}
 
-\item{robust, hetdat, hetvar}{options on error terms assumptions}
+\item{robust}{set to \code{1} to allow for heterogeneity
+and autocorrelation in the residuals, \code{0} otherwise.
+The method used is \emph{Andrews(1991)} automatic bandwidth with AR(1) approximation with quadratic
+kernel. Note: Do not set to \code{1} if lagged dependent variables are
+included as regressors.}
 
-\item{y}{dependent variables in matrix form}
+\item{hetdat}{option for the construction of the F tests. Set to 1 if want to
+allow different moment matrices of the regressors across segments.
+If \code{hetdat} = \code{0}, the same moment matrices are assumed for each segment
+and estimated from the ful sample. It is recommended to set
+\code{hetdat}=\code{1} if number of regressors \code{x} > \code{0}.}
 
-\item{z}{matrix of independent variables with coefficients are allowed to change across
-regimes}
+\item{hetvar}{option for the construction of the F tests.Set to \code{1}
+if users want to allow for the variance of the residuals to be different across segments.
+If \code{hetvar}=\code{0}, the variance of the residuals is assumed constant
+across segments and constructed from the full sample. \code{hetvar}=\code{1} when \code{robust} =\code{1})}
 
-\item{x}{matrix of independent variables with coefficients constant across regimes}
+\item{hetq}{used in the construction of the confidence intervals for the break
+dates. If \code{hetq}=\code{0}, the moment matrix of the data is assumed identical
+across segments}
 
-\item{m}{maximum number of breaks}
+\item{hetomega}{used in the construction of the confidence intervals for the break
+dates. If \code{hetomega}=\code{0}, the long run covariance matrix of zu is
+assumed identical across segments
+(the variance of the errors u if \code{robust}=\code{0}).}
+
+\item{const}{indicates whether the regression model include an
+intercept changing across regimes. Default value is 1}
+
+\item{h}{Minimum segment length of regime considered in estimation. If users want to specify a particular value, please set `eps1=0`}
 }
 \value{
-reparv Repartition method estimation of break dates
+out A list of class `model` contains all information about the
+estimated structural change model with `fixn` breaks
 }
 \description{
-The following procedure constructs the so-called repartition
-estimates of the breaks obtained by the sequential method (see Bai
-(1995), Estimating Breaks one at a time, Econometric Theory, 13,
-315-352. It alows estimates that have the same asymptotic
-distribution as those obtained by global minimization. Otherwise, the
-output from the procedure "estim" below do not deliver asymptotically
-correct confidence intervals for the break dates.
+`dofix()` compute a structural change model with pre-specified number
+of breaks.
+}
+\examples{
+dofix('rate',data=real,fixn=3)
+
 }

@@ -2,10 +2,34 @@
 % Please edit documentation in R/Procedures.R
 \name{print.model}
 \alias{print.model}
-\title{Summary output of a n breaks model}
+\title{Summary output of a structural breaks `model`}
 \usage{
 \method{print}{model}(x, ...)
 }
+\arguments{
+\item{x}{object of S3 class `model`}
+
+\item{...}{further arguments passed to or from other methods.}
+}
+\value{
+No return value, called for printing to console the following information in `x`:
+\itemize{
+\item Basic details of the model: name of prodecures invoked,
+number of estimated breaks, pure/partial structural change model,global min SSR
+\item `date_tab` summarizes estimated break dates, see \code{\link{compile_model}}
+\item `RS_tab` summarizes estimated coefficients allowed to change
+across regimes, see \code{\link{compile_model}}
+\item `FS_tab` summarizes estimated coefficients constant across regimes,
+see \code{\link{compile_model}}
+}
+}
 \description{
-Function to format the output of the n-break model
+`print` the output of the S3 class `model` with all relevant information:
+\itemize{
+\item name of procedure used to obtain number of breaks in the model
+\item print a table summarizing the break date estimation
+(including confidence interval for the estimated date)
+\item print a table summarizing the estimated coefficients for `z` regressors
+\item print a table summarizing the estimated coefficients for `x` regressors (if any)
+}
 }
